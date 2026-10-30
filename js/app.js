@@ -24,19 +24,20 @@ const MAX_COORD = 100000;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
+const DEFAULT_SAMPLE = 'Dirt.json';
 const SAMPLE_FALLBACK = [
-  { file: 'los-santos-loop.json', name: 'Los Santos 环城', nameEn: 'Los Santos Loop', note: '海滩 → 东岸 → 市中心 → 南城 → 西城 → 北环，再回到海滩。', noteEn: 'Beach → east coast → downtown → south LS → west side → north loop, then back to the beach.', cps: 12, length: '10.1 km' },
-  { file: 'san-fierro-hills.json', name: 'San Fierro 山路', nameEn: 'San Fierro Hills', note: '市中心出发，绕西城、南城与东湾，穿过多段起伏山路。', noteEn: 'From downtown, around the west side, south city, and east bay over rolling hills.', cps: 12, length: '4.48 km' },
-  { file: 'las-venturas-strip.json', name: 'Las Venturas 大道', nameEn: 'Las Venturas Strip', note: '机场 → 南大道 → 东环 → 赌城大道，再回到机场。', noteEn: 'Airport → south strip → east loop → the Strip, then back to the airport.', cps: 8, length: '6.34 km' },
+  { file: DEFAULT_SAMPLE, name: 'Dirt', cps: 36, length: '11.4 km' },
+  { file: '96SB2.json', name: '96SB2', cps: 15, length: '2.60 km' },
+  { file: '1314race.json', name: '1314race', cps: 19, length: '4.89 km' },
 ];
 const SPEC_EXAMPLE = `{
-  "name": "Los Santos Loop",
+  "name": "Dirt",
   "author": "your name",
   "closed": false,
   "checkpoints": [
-    { "x": 2287.4, "y": -1605.9, "z": 2.6 },
-    { "x": 1617.6, "y": -1205.8, "z": 51.8 },
-    { "x": 1599.0, "y": -2378.2, "z": 12.4 }
+    { "x": 1067.495, "y": 2292.726, "z": 10.432 },
+    { "x": 727.516, "y": 2296.72, "z": 24.04 },
+    { "x": 548.414, "y": 2323.843, "z": 32.481 }
   ]
 }`;
 
@@ -3017,7 +3018,7 @@ function runAction(action) {
     case 'download-png': downloadPNG(); break;
     case 'download-svg': downloadSVG(); break;
     case 'copy-spec': copyText(SPEC_EXAMPLE); break;
-    case 'load-sample': loadSample('los-santos-loop'); break;
+    case 'load-sample': loadSample(DEFAULT_SAMPLE); break;
     case 'open-samples-menu': openSamplesMenu(); break;
     default: break;
   }
@@ -3247,8 +3248,8 @@ async function boot() {
     renderWarnings();
     MapView.fitBase();
   } else {
-    // First visit: show a ready-made example instead of an empty map.
-    loadSample('los-santos-loop', { silent: true });
+    // First visit: show the featured classic sample instead of an empty map.
+    loadSample(DEFAULT_SAMPLE, { silent: true });
   }
   setSideStatus('ready', t("status.ready"));
 }

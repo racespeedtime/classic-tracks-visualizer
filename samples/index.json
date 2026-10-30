@@ -1,29 +1,1171 @@
 [
   {
-    "file": "los-santos-loop.json",
-    "name": "Los Santos 环城",
-    "nameEn": "Los Santos Loop",
-    "note": "海滩 → 东岸 → 市中心 → 南城 → 西城 → 北环，再回到海滩。",
-    "noteEn": "Beach → east coast → downtown → south LS → west side → north loop, then back to the beach.",
-    "cps": 12,
-    "length": "10.1 km"
+    "file": "Dirt.json",
+    "name": "Dirt",
+    "cps": 36,
+    "length": "11.4 km",
+    "author": "[ITC]RR_LXD"
   },
   {
-    "file": "san-fierro-hills.json",
-    "name": "San Fierro 山路",
-    "nameEn": "San Fierro Hills",
-    "note": "市中心出发，绕西城、南城与东湾，穿过多段起伏山路。",
-    "noteEn": "From downtown, around the west side, south city, and east bay over rolling hills.",
-    "cps": 12,
-    "length": "4.48 km"
+    "file": "96SB2.json",
+    "name": "96SB2",
+    "cps": 15,
+    "length": "2.60 km",
+    "author": "[Force]snwang1996"
   },
   {
-    "file": "las-venturas-strip.json",
-    "name": "Las Venturas 大道",
-    "nameEn": "Las Venturas Strip",
-    "note": "机场 → 南大道 → 东环 → 赌城大道，再回到机场。",
-    "noteEn": "Airport → south strip → east loop → the Strip, then back to the airport.",
+    "file": "96SB3.json",
+    "name": "96SB3",
+    "cps": 103,
+    "length": "40.1 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "96SBNRG.json",
+    "name": "96SBNRG",
+    "cps": 16,
+    "length": "6.98 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "562连贯赛LV.json",
+    "name": "562连贯赛LV",
+    "cps": 44,
+    "length": "6.27 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "1314race.json",
+    "name": "1314race",
+    "cps": 19,
+    "length": "4.89 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "Area69.json",
+    "name": "Area69",
+    "cps": 23,
+    "length": "6.17 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "bilibili.json",
+    "name": "bilibili",
+    "cps": 29,
+    "length": "10.3 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "Biubiu1.json",
+    "name": "Biubiu1",
+    "cps": 20,
+    "length": "9.42 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "Biubiu2.json",
+    "name": "Biubiu2",
+    "cps": 20,
+    "length": "4.30 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "Biubiu3.json",
+    "name": "Biubiu3",
+    "cps": 20,
+    "length": "4.68 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "Biubiu5.json",
+    "name": "Biubiu5",
+    "cps": 18,
+    "length": "6.47 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "Car.json",
+    "name": "Car",
+    "cps": 20,
+    "length": "13.3 km",
+    "author": "[Ghost]Dylan"
+  },
+  {
+    "file": "CCS.json",
+    "name": "CCS",
+    "cps": 24,
+    "length": "3.19 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "CCS_5f.json",
+    "name": "CCS_5f",
+    "cps": 40,
+    "length": "4.27 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "CJJSpeed.json",
+    "name": "CJJSpeed",
+    "cps": 52,
+    "length": "14.8 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "Combination.json",
+    "name": "Combination",
+    "cps": 42,
+    "length": "23.5 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "DawnRace.json",
+    "name": "DawnRace",
+    "cps": 56,
+    "length": "17.4 km",
+    "author": "[Ghost]Dawn"
+  },
+  {
+    "file": "DawnRace2.json",
+    "name": "DawnRace2",
+    "cps": 37,
+    "length": "9.23 km",
+    "author": "[Ghost]Dawn"
+  },
+  {
+    "file": "DawnRace3.json",
+    "name": "DawnRace3",
+    "cps": 25,
+    "length": "7.47 km",
+    "author": "[Ghost]Dawn"
+  },
+  {
+    "file": "DawnRace4.json",
+    "name": "DawnRace4",
+    "cps": 21,
+    "length": "4.85 km",
+    "author": "[Ghost]Dawn"
+  },
+  {
+    "file": "DawnRace5.json",
+    "name": "DawnRace5",
+    "cps": 37,
+    "length": "7.39 km",
+    "author": "[Ghost]Dawn"
+  },
+  {
+    "file": "Dirt_5f.json",
+    "name": "Dirt_5f",
+    "cps": 29,
+    "length": "11.8 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "DiRT2.json",
+    "name": "DiRT2",
+    "cps": 36,
+    "length": "7.58 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "Dirt2~2.json",
+    "name": "Dirt2",
+    "cps": 28,
+    "length": "6.95 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "DiRT3.json",
+    "name": "DiRT3",
+    "cps": 30,
+    "length": "7.06 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "DiRT4.json",
+    "name": "DiRT4",
+    "cps": 28,
+    "length": "8.01 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "DRace.json",
+    "name": "DRace",
+    "cps": 32,
+    "length": "10.9 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "DRace_5f.json",
+    "name": "DRace_5f",
+    "cps": 22,
+    "length": "6.64 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "DRace2.json",
+    "name": "DRace2",
+    "cps": 25,
+    "length": "6.86 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "DRace3.json",
+    "name": "DRace3",
+    "cps": 21,
+    "length": "5.93 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "DragRace.json",
+    "name": "DragRace",
+    "cps": 3,
+    "length": "1.26 km",
+    "author": "Waunny"
+  },
+  {
+    "file": "DragRace3.json",
+    "name": "DragRace3",
+    "cps": 4,
+    "length": "1.31 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "DragRace4.json",
+    "name": "DragRace4",
+    "cps": 3,
+    "length": "1.63 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "Drift.json",
+    "name": "Drift",
+    "cps": 26,
+    "length": "5.21 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "dts.json",
+    "name": "dts",
+    "cps": 12,
+    "length": "1.69 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "DTS_Race.json",
+    "name": "DTS_Race",
+    "cps": 36,
+    "length": "8.85 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "DTSSpeed.json",
+    "name": "DTSSpeed",
+    "cps": 15,
+    "length": "1.63 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "Dww16.json",
+    "name": "Dww16",
     "cps": 8,
-    "length": "6.34 km"
+    "length": "2.78 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "EMP.json",
+    "name": "EMP",
+    "cps": 46,
+    "length": "5.72 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "etai.json",
+    "name": "etai",
+    "cps": 47,
+    "length": "20.6 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "EyeOutLS.json",
+    "name": "EyeOutLS",
+    "cps": 36,
+    "length": "11.3 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "EyeOutLS_5f.json",
+    "name": "EyeOutLS_5f",
+    "cps": 44,
+    "length": "11.8 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "EyeOutLS_R.json",
+    "name": "EyeOutLS_R",
+    "cps": 44,
+    "length": "11.8 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "Ezro_Crazy_Rally.json",
+    "name": "Ezro_Crazy_Rally",
+    "cps": 32,
+    "length": "16.5 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "Ezro_SF.json",
+    "name": "Ezro_SF",
+    "cps": 36,
+    "length": "9.24 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "Feathers.json",
+    "name": "Feathers",
+    "cps": 36,
+    "length": "13.3 km",
+    "author": "[R_ST]Safford"
+  },
+  {
+    "file": "Feathers_5f.json",
+    "name": "Feathers_5f",
+    "cps": 28,
+    "length": "13.3 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "FINDWAY.json",
+    "name": "FINDWAY",
+    "cps": 15,
+    "length": "3.47 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "Fly.json",
+    "name": "Fly",
+    "cps": 22,
+    "length": "14.9 km",
+    "author": "[GrT]Rich_Sp"
+  },
+  {
+    "file": "Flycar.json",
+    "name": "Flycar",
+    "cps": 40,
+    "length": "14.0 km",
+    "author": "[R_ST]Safford"
+  },
+  {
+    "file": "flycar~2.json",
+    "name": "flycar",
+    "cps": 40,
+    "length": "14.1 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "flycar2.json",
+    "name": "flycar2",
+    "cps": 48,
+    "length": "27.4 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "Flyyy.json",
+    "name": "Flyyy",
+    "cps": 18,
+    "length": "5.71 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "FollowMe.json",
+    "name": "FollowMe",
+    "cps": 40,
+    "length": "12.5 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "FollowMe_5f.json",
+    "name": "FollowMe_5f",
+    "cps": 42,
+    "length": "16.4 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "FollowMe2.json",
+    "name": "FollowMe2",
+    "cps": 42,
+    "length": "22.6 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "FollowMe2_5f.json",
+    "name": "FollowMe2_5f",
+    "cps": 36,
+    "length": "19.2 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "freeway_5f.json",
+    "name": "freeway_5f",
+    "cps": 26,
+    "length": "6.17 km",
+    "author": "[Force]Sandman"
+  },
+  {
+    "file": "freeway2.json",
+    "name": "freeway2",
+    "cps": 29,
+    "length": "8.13 km",
+    "author": "[Force]Sandman"
+  },
+  {
+    "file": "HighSpeed.json",
+    "name": "HighSpeed",
+    "cps": 9,
+    "length": "3.49 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "HighSpeed_5f.json",
+    "name": "HighSpeed_5f",
+    "cps": 10,
+    "length": "3.46 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "HighSpeed1.json",
+    "name": "HighSpeed1",
+    "cps": 43,
+    "length": "18.1 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "HighSpeed2.json",
+    "name": "HighSpeed2",
+    "cps": 10,
+    "length": "4.21 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "HighSpeed2_5f.json",
+    "name": "HighSpeed2_5f",
+    "cps": 9,
+    "length": "4.15 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "HighSpeed3.json",
+    "name": "HighSpeed3",
+    "cps": 18,
+    "length": "5.45 km",
+    "author": "stock"
+  },
+  {
+    "file": "HighSpeed4.json",
+    "name": "HighSpeed4",
+    "cps": 10,
+    "length": "3.82 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "HighSpeed4_5f.json",
+    "name": "HighSpeed4_5f",
+    "cps": 11,
+    "length": "4.03 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "HighSpeed4山寨版.json",
+    "name": "HighSpeed4山寨版",
+    "cps": 10,
+    "length": "3.05 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "HighSpeed5.json",
+    "name": "HighSpeed5",
+    "cps": 113,
+    "length": "35.4 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "HighSpeed6.json",
+    "name": "HighSpeed6",
+    "cps": 11,
+    "length": "2.66 km",
+    "author": "Waunny"
+  },
+  {
+    "file": "hold-on.json",
+    "name": "hold-on",
+    "cps": 27,
+    "length": "6.58 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "hxss_speed.json",
+    "name": "hxss_speed",
+    "cps": 51,
+    "length": "16.9 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "hxsx_speed.json",
+    "name": "hxsx_speed",
+    "cps": 42,
+    "length": "13.9 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "Jackpot.json",
+    "name": "Jackpot",
+    "cps": 35,
+    "length": "9.27 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "Jackpot_5f.json",
+    "name": "Jackpot_5f",
+    "cps": 52,
+    "length": "11.4 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "Jackpot_R.json",
+    "name": "Jackpot_R",
+    "cps": 52,
+    "length": "11.4 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "JUMP.json",
+    "name": "JUMP",
+    "cps": 14,
+    "length": "3.81 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "JUMPING.json",
+    "name": "JUMPING",
+    "cps": 12,
+    "length": "1.92 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "Kaous_5f.json",
+    "name": "Kaous_5f",
+    "cps": 31,
+    "length": "10.9 km",
+    "author": "[Siv]Safford"
+  },
+  {
+    "file": "KBXZ.json",
+    "name": "KBXZ",
+    "cps": 137,
+    "length": "43.6 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "knight~2.json",
+    "name": "knight",
+    "cps": 27,
+    "length": "9.15 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "kts_OutLv.json",
+    "name": "kts_OutLv",
+    "cps": 39,
+    "length": "19.7 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "L.A_Race.json",
+    "name": "L.A_Race",
+    "cps": 56,
+    "length": "14.9 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "LDZ.json",
+    "name": "LDZ",
+    "cps": 24,
+    "length": "6.37 km",
+    "author": "[ITC]SDK_DDT"
+  },
+  {
+    "file": "LDZ_5f.json",
+    "name": "LDZ_5f",
+    "cps": 25,
+    "length": "6.38 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "LDZ_Near_Way.json",
+    "name": "LDZ_Near_Way",
+    "cps": 23,
+    "length": "6.27 km",
+    "author": "[Force]snwang1996"
+  },
+  {
+    "file": "Lotus.json",
+    "name": "Lotus",
+    "cps": 44,
+    "length": "35.6 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "LS_Dree.json",
+    "name": "LS_Dree",
+    "cps": 73,
+    "length": "19.0 km",
+    "author": "[Gta_No.1]Dree"
+  },
+  {
+    "file": "LSAirportDrift.json",
+    "name": "LSAirportDrift",
+    "cps": 33,
+    "length": "5.65 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "LSxiang.json",
+    "name": "LSxiang",
+    "cps": 40,
+    "length": "12.1 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "LVJC.json",
+    "name": "LVJC",
+    "cps": 24,
+    "length": "4.57 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "Misc.json",
+    "name": "Misc",
+    "cps": 43,
+    "length": "21.7 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Misc_5f.json",
+    "name": "Misc_5f",
+    "cps": 35,
+    "length": "25.2 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "Misc2.json",
+    "name": "Misc2",
+    "cps": 37,
+    "length": "17.7 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Misc3.json",
+    "name": "Misc3",
+    "cps": 37,
+    "length": "21.2 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Misc4.json",
+    "name": "Misc4",
+    "cps": 39,
+    "length": "11.7 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Misc5.json",
+    "name": "Misc5",
+    "cps": 41,
+    "length": "21.5 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Misc5_5f.json",
+    "name": "Misc5_5f",
+    "cps": 37,
+    "length": "24.4 km",
+    "author": "[Force]Dylaser"
+  },
+  {
+    "file": "Misc6.json",
+    "name": "Misc6",
+    "cps": 45,
+    "length": "49.1 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "Montecito.json",
+    "name": "Montecito",
+    "cps": 23,
+    "length": "4.89 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "NogthRace1.json",
+    "name": "NogthRace1",
+    "cps": 28,
+    "length": "4.26 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "OffControl.json",
+    "name": "OffControl",
+    "cps": 25,
+    "length": "15.7 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "OffControl_5f.json",
+    "name": "OffControl_5f",
+    "cps": 26,
+    "length": "16.0 km",
+    "author": "[ITC]Shindo"
+  },
+  {
+    "file": "OutSport.json",
+    "name": "OutSport",
+    "cps": 33,
+    "length": "6.37 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "park.json",
+    "name": "park",
+    "cps": 15,
+    "length": "2.52 km",
+    "author": "[Force]Sandman"
+  },
+  {
+    "file": "Police.json",
+    "name": "Police",
+    "cps": 66,
+    "length": "21.6 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "ProLS.json",
+    "name": "ProLS",
+    "cps": 28,
+    "length": "6.45 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "qiuming_5f.json",
+    "name": "qiuming_5f",
+    "cps": 25,
+    "length": "3.99 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "QMS.json",
+    "name": "QMS",
+    "cps": 52,
+    "length": "5.54 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "qms~2.json",
+    "name": "qms",
+    "cps": 55,
+    "length": "5.36 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "QNS.json",
+    "name": "QNS",
+    "cps": 24,
+    "length": "2.96 km",
+    "author": "[Force]Sandman"
+  },
+  {
+    "file": "RAC.json",
+    "name": "RAC",
+    "cps": 30,
+    "length": "16.8 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "RaceS.json",
+    "name": "RaceS",
+    "cps": 40,
+    "length": "16.0 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "RaceS_5f.json",
+    "name": "RaceS_5f",
+    "cps": 29,
+    "length": "12.7 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "Raise.json",
+    "name": "Raise",
+    "cps": 62,
+    "length": "37.4 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "RDN.json",
+    "name": "RDN",
+    "cps": 57,
+    "length": "32.5 km",
+    "author": "[GrT]Rich_Sp"
+  },
+  {
+    "file": "Rich1.json",
+    "name": "Rich1",
+    "cps": 82,
+    "length": "12.3 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "Rich2.json",
+    "name": "Rich2",
+    "cps": 54,
+    "length": "11.6 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "Rich3.json",
+    "name": "Rich3",
+    "cps": 52,
+    "length": "21.2 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "Roll_With_Triad_5f.json",
+    "name": "Roll_With_Triad_5f",
+    "cps": 43,
+    "length": "8.90 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "Roll_With_Triad_R.json",
+    "name": "Roll_With_Triad_R",
+    "cps": 43,
+    "length": "8.90 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "RunInMadd.json",
+    "name": "RunInMadd",
+    "cps": 22,
+    "length": "6.00 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "RunInMadd_5f.json",
+    "name": "RunInMadd_5f",
+    "cps": 91,
+    "length": "12.7 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "RunInMadd_R.json",
+    "name": "RunInMadd_R",
+    "cps": 91,
+    "length": "12.7 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "RunInMadd2014.json",
+    "name": "RunInMadd2014",
+    "cps": 34,
+    "length": "7.17 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "samp_wrc.json",
+    "name": "samp_wrc",
+    "cps": 16,
+    "length": "10.4 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "SBG01LV.json",
+    "name": "SBG01LV",
+    "cps": 24,
+    "length": "8.88 km",
+    "author": "[Trai]sbguang1997"
+  },
+  {
+    "file": "SFSpeed.json",
+    "name": "SFSpeed",
+    "cps": 131,
+    "length": "49.9 km",
+    "author": "[ITC]RainBow"
+  },
+  {
+    "file": "SFTestTrack.json",
+    "name": "SFTestTrack",
+    "cps": 12,
+    "length": "6.31 km",
+    "author": "[ITC]Shindo"
+  },
+  {
+    "file": "SFxLS.json",
+    "name": "SFxLS",
+    "cps": 29,
+    "length": "12.0 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "SFxLS_5f.json",
+    "name": "SFxLS_5f",
+    "cps": 59,
+    "length": "26.0 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "SFxLS_R.json",
+    "name": "SFxLS_R",
+    "cps": 63,
+    "length": "26.0 km",
+    "author": "[ITC]RR_LXD"
+  },
+  {
+    "file": "SONG-NRG.json",
+    "name": "SONG-NRG",
+    "cps": 12,
+    "length": "2.63 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "SongSF.json",
+    "name": "SongSF",
+    "cps": 17,
+    "length": "2.33 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "SoySY.json",
+    "name": "SoySY",
+    "cps": 19,
+    "length": "4.28 km",
+    "author": "[ITC]KTS"
+  },
+  {
+    "file": "SpaceDrift.json",
+    "name": "SpaceDrift",
+    "cps": 20,
+    "length": "9.49 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "Speed_G.json",
+    "name": "Speed_G",
+    "cps": 27,
+    "length": "14.2 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "SpeedCity.json",
+    "name": "SpeedCity",
+    "cps": 9,
+    "length": "3.54 km",
+    "author": "[Force]Ezro"
+  },
+  {
+    "file": "SpXFARM.json",
+    "name": "SpXFARM",
+    "cps": 25,
+    "length": "7.22 km",
+    "author": "[EH_RK]Sp_X"
+  },
+  {
+    "file": "SpXLDZ01.json",
+    "name": "SpXLDZ01",
+    "cps": 23,
+    "length": "9.28 km",
+    "author": "[EH_RK]Sp_X"
+  },
+  {
+    "file": "SpXLS01.json",
+    "name": "SpXLS01",
+    "cps": 29,
+    "length": "7.60 km",
+    "author": "[EH_RK]Sp_X"
+  },
+  {
+    "file": "SpXLV01.json",
+    "name": "SpXLV01",
+    "cps": 10,
+    "length": "3.92 km",
+    "author": "[EH_RK]Sp_X"
+  },
+  {
+    "file": "SpXSF01.json",
+    "name": "SpXSF01",
+    "cps": 29,
+    "length": "10.4 km",
+    "author": "上善若水"
+  },
+  {
+    "file": "SpXSF01_5f.json",
+    "name": "SpXSF01_5f",
+    "cps": 29,
+    "length": "9.01 km",
+    "author": "[EH_RK]Sp_X"
+  },
+  {
+    "file": "StormTestTrack.json",
+    "name": "StormTestTrack",
+    "cps": 3,
+    "length": "420 m",
+    "author": "[ITC]Shindo"
+  },
+  {
+    "file": "TestSystem.json",
+    "name": "TestSystem",
+    "cps": 2,
+    "length": "156 m",
+    "author": "[ITC]Shindo"
+  },
+  {
+    "file": "TheRun.json",
+    "name": "TheRun",
+    "cps": 22,
+    "length": "1.76 km",
+    "author": "[Force]Sandman"
+  },
+  {
+    "file": "TTG1.json",
+    "name": "TTG1",
+    "cps": 30,
+    "length": "8.57 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "TTG2.json",
+    "name": "TTG2",
+    "cps": 26,
+    "length": "9.71 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "TTG3.json",
+    "name": "TTG3",
+    "cps": 31,
+    "length": "8.03 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "TTG4.json",
+    "name": "TTG4",
+    "cps": 24,
+    "length": "10.9 km",
+    "author": "[GrT]Rich_Sp"
+  },
+  {
+    "file": "WorldRallyChampion.json",
+    "name": "WorldRallyChampion",
+    "cps": 345,
+    "length": "132.1 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "WorldRallyChampion_5f.json",
+    "name": "WorldRallyChampion_5f",
+    "cps": 379,
+    "length": "136.2 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WorldRallyChampion1.json",
+    "name": "WorldRallyChampion1",
+    "cps": 133,
+    "length": "50.3 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WorldRallyChampion2.json",
+    "name": "WorldRallyChampion2",
+    "cps": 129,
+    "length": "45.0 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WorldRallyChampion3.json",
+    "name": "WorldRallyChampion3",
+    "cps": 118,
+    "length": "40.7 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WRC_Rally2.json",
+    "name": "WRC_Rally2",
+    "cps": 105,
+    "length": "41.6 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WRC_Rally3.json",
+    "name": "WRC_Rally3",
+    "cps": 126,
+    "length": "39.1 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "WRR_Rally1.json",
+    "name": "WRR_Rally1",
+    "cps": 95,
+    "length": "33.1 km",
+    "author": "[ITC]dyq"
+  },
+  {
+    "file": "XCS.json",
+    "name": "XCS",
+    "cps": 46,
+    "length": "13.1 km",
+    "author": "[GrT]Dylan"
+  },
+  {
+    "file": "xcsd.json",
+    "name": "xcsd",
+    "cps": 37,
+    "length": "9.20 km",
+    "author": "[Ghost]Rich_Sp"
+  },
+  {
+    "file": "xdll.json",
+    "name": "xdll",
+    "cps": 27,
+    "length": "1.61 km",
+    "author": "[Siv]Johnny"
+  },
+  {
+    "file": "Xhs.json",
+    "name": "Xhs",
+    "cps": 23,
+    "length": "12.6 km",
+    "author": "[Trai]Song"
+  },
+  {
+    "file": "yami.json",
+    "name": "yami",
+    "cps": 28,
+    "length": "14.0 km",
+    "author": "[Force]yami"
+  },
+  {
+    "file": "YouCantSurvive.json",
+    "name": "YouCantSurvive",
+    "cps": 20,
+    "length": "7.82 km",
+    "author": "[ITC]Shindo"
+  },
+  {
+    "file": "千年山下山.json",
+    "name": "千年山下山",
+    "cps": 26,
+    "length": "5.34 km",
+    "author": "[Force]Ezro"
   }
 ]

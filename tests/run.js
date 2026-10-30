@@ -15,6 +15,7 @@ require('../js/export.js');
 const E = globalThis.Exporter;
 
 const ROOT = path.join(__dirname, '..');
+const LOOP_FIXTURE = path.join(__dirname, 'fixtures/closed-loop.json');
 let passed = 0;
 let failed = 0;
 
@@ -380,8 +381,8 @@ test('a short island route is not detoured onto the mainland', () => {
   assert.ok(route.length < 100, `expected local route, got ${route.length}`);
 });
 
-test('sample loop routes on the road graph', () => {
-  const sample = T.parseTrack(fs.readFileSync(path.join(ROOT, 'samples/los-santos-loop.json'), 'utf8'), 'sample.json');
+test('closed loop fixture routes on the road graph', () => {
+  const sample = T.parseTrack(fs.readFileSync(LOOP_FIXTURE, 'utf8'), 'sample.json');
   const route = T.computeRoute(sample, graph, { mode: 'auto', snapRadius: 80, smooth: 45, closed: true });
   assert.strictEqual(route.modeUsed, 'road');
   assert.ok(route.points.length > 100);
@@ -391,7 +392,7 @@ test('sample loop routes on the road graph', () => {
 });
 
 test('open route is shorter than the closed loop', () => {
-  const sample = T.parseTrack(fs.readFileSync(path.join(ROOT, 'samples/los-santos-loop.json'), 'utf8'), 'sample.json');
+  const sample = T.parseTrack(fs.readFileSync(LOOP_FIXTURE, 'utf8'), 'sample.json');
   const closed = T.computeRoute(sample, graph, { mode: 'auto', snapRadius: 80, smooth: 45, closed: true });
   const open = T.computeRoute(sample, graph, { mode: 'auto', snapRadius: 80, smooth: 45, closed: false });
   assert.strictEqual(open.modeUsed, 'road');
@@ -411,7 +412,7 @@ test('fully off-road auto falls back to straight with a warning', () => {
 });
 
 test('partially off-road auto keeps routed legs and fills gaps', () => {
-  const track = T.parseTrack(fs.readFileSync(path.join(ROOT, 'samples/los-santos-loop.json'), 'utf8'), 'sample.json');
+  const track = T.parseTrack(fs.readFileSync(LOOP_FIXTURE, 'utf8'), 'sample.json');
   track.checkpoints[5].x = 90000;
   track.checkpoints[5].y = 90000;
   track.checkpoints[5].hasZ = false;

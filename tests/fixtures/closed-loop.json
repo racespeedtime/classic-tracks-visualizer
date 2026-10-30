@@ -1,8 +1,8 @@
 {
   "format": "track-layout/v1",
-  "name": "Los Santos 环城",
+  "name": "Closed Loop Fixture",
   "author": "Track Layout",
-  "description": "海滩 → 东岸 → 市中心 → 南城 → 西城 → 北环，再回到海滩。",
+  "description": "Test fixture for road-graph routing.",
   "map": "san-andreas",
   "closed": true,
   "checkpoints": [

@@ -52,7 +52,7 @@ node server.js 8173
 # or: npm start
 ```
 
-Open <http://127.0.0.1:8173/>. The first visit automatically loads the Los Santos Loop sample.
+Open <http://127.0.0.1:8173/>. The first visit automatically loads the Dirt sample.
 
 - `npx serve` downloads `serve` temporarily on first use; it does not write into this repo.
 - `npm run serve` is equivalent to Option A; `npm start` is equivalent to Option B.
@@ -90,13 +90,13 @@ The simplest form is an **ordered CP array**; array order is track order:
 
 ```json
 {
-  "name": "Los Santos Loop",
+  "name": "Dirt",
   "author": "your name",
   "closed": false,
   "checkpoints": [
-    { "x": 2287.4, "y": -1605.9, "z": 2.6 },
-    { "x": 1617.6, "y": -1205.8, "z": 51.8 },
-    { "x": 1599.0,  "y": -2378.2, "z": 12.4 }
+    { "x": 1067.495, "y": 2292.726, "z": 10.432 },
+    { "x": 727.516, "y": 2296.72, "z": 24.04 },
+    { "x": 548.414, "y": 2323.843, "z": 32.481 }
   ]
 }
 ```
@@ -220,7 +220,7 @@ samples/                sample tracks + index.json (commit them)
 docs/preview.webp        dark README screenshot
 docs/preview-light.webp  light README screenshot
 vendor/leaflet/         Leaflet 1.9.4 (commit it)
-tools/make-samples.js   regenerate samples from the road graph
+tools/make-samples.js   rebuild samples/index.json from the sample tracks
 tests/run.js            parser / geometry / routing tests
 server.js               local static server
 track.schema.json       track JSON Schema
@@ -232,13 +232,15 @@ track.schema.json       track JSON Schema
 
 `data/nodes.json`, `assets/samap.png`, `assets/icons/`, `docs/preview.webp`, `docs/preview-light.webp`, `samples/*.json` and `vendor/leaflet/` are required runtime or documentation assets. **Keep them in the repository**; do not delete them or add them to the ignore list.
 
-## Regenerating Samples
+## Rebuilding the Sample Index
 
-Sample CPs are real road-graph paths built from hand-picked waypoints (each waypoint plus each segment midpoint), so re-routing cannot cut corners:
+The bundled library contains the classic-pool tracks. Every sample is a regular track JSON file under [`samples/`](samples/); `samples/index.json` stores the display name, CP count and road-routed length shown in the Samples menu. After adding, removing or editing sample files, rebuild the index:
 
 ```bash
 npm run samples
 ```
+
+The script routes every sample with the app's default settings, writes `index.json`, and leaves the track files untouched.
 
 ## Credits
 

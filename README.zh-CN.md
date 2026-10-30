@@ -52,7 +52,7 @@ node server.js 8173
 # 或 npm start
 ```
 
-打开 <http://127.0.0.1:8173/>。首次打开会自动载入 Los Santos 环城示例。
+打开 <http://127.0.0.1:8173/>。首次打开会自动载入 Dirt 示例。
 
 - `npx serve` 首次运行会临时下载 `serve`，不会写入本仓库；之后可直接复用。
 - `npm run serve` 等价于方式 A；`npm start` 等价于方式 B。
@@ -90,13 +90,13 @@ npm test
 
 ```json
 {
-  "name": "Los Santos Loop",
+  "name": "Dirt",
   "author": "your name",
   "closed": false,
   "checkpoints": [
-    { "x": 2287.4, "y": -1605.9, "z": 2.6 },
-    { "x": 1617.6, "y": -1205.8, "z": 51.8 },
-    { "x": 1599.0,  "y": -2378.2, "z": 12.4 }
+    { "x": 1067.495, "y": 2292.726, "z": 10.432 },
+    { "x": 727.516, "y": 2296.72, "z": 24.04 },
+    { "x": 548.414, "y": 2323.843, "z": 32.481 }
   ]
 }
 ```
@@ -220,7 +220,7 @@ samples/                示例赛道 + index.json（需要提交）
 docs/preview.webp        README 深色截图
 docs/preview-light.webp  README 浅色截图
 vendor/leaflet/         Leaflet 1.9.4（需要提交）
-tools/make-samples.js   从路网重新生成示例
+tools/make-samples.js   从示例赛道重建 samples/index.json
 tests/run.js            解析 / 几何 / 寻路测试
 server.js               本地静态服务器
 track.schema.json       赛道 JSON Schema
@@ -232,13 +232,15 @@ track.schema.json       赛道 JSON Schema
 
 `data/nodes.json`、`assets/samap.png`、`assets/icons/`、`docs/preview.webp`、`docs/preview-light.webp`、`samples/*.json` 和 `vendor/leaflet/` 是运行或展示所需资源，**需要保留在仓库中**，不要误删或加入忽略列表。
 
-## 重新生成示例
+## 重建示例索引
 
-示例 CP 是沿手工挑选的路点生成的真实路网路径（每个路点 + 每段中点），这样重新寻路时不会抄近道：
+示例库收录 classic-pool 的经典赛道。每个示例都是 [`samples/`](samples/) 下的普通赛道 JSON，`samples/index.json` 保存示例菜单显示的名称、CP 数量与路网寻路长度。增删或修改示例文件后，运行：
 
 ```bash
 npm run samples
 ```
+
+脚本会按应用的默认参数为每个示例寻路并写入 `index.json`，不会修改赛道文件本身。
 
 ## Credits
 
