@@ -30,11 +30,11 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
 - **Safe CP editing**: map marker dragging is locked by default to prevent accidental moves; press `L` or use the lock button to unlock, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
 - **Responsive map**: window resizing is debounced (180 ms), then the map re-fits the current track; virtual lists and the scale bar refresh at the same time.
-- **Route playback**: play a direction arrow from start to finish with a 0.1×–4× speed slider (click the `×` value to type an exact speed); a floating HUD shows playing/paused/finished status and stop controls. Optional map following keeps the arrow centered (dragging or zooming turns it off). The animation is map-preview only and never appears in exports.
+- **Route playback**: play a direction arrow from start to finish with a 0.1×–4× speed slider (click the `×` value to type an exact speed); a floating HUD shows playing/paused/finished status, a draggable progress bar, and stop controls. Optional map following keeps the arrow centered; an additional heading-up mode rotates the map around the playback point so the arrow always points up (dragging or zooming turns both modes off). The animation is map-preview only and never appears in exports.
 - **Collapsible route notes**: route warnings can be folded away and use the same virtualized list rendering for long runs.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
 - **Responsive workspace**: below 980px the sidebar becomes a bottom sheet with peek / half / full snap points. Drag the handle, tap it, use the chevron, or use `↑` / `↓` / `Home` / `End` while the handle is focused. On desktop the sidebar can be collapsed from the top bar.
-- **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, fit, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
+- **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
 - **Movable help dialogs**: drag the title bar of the JSON-format or keyboard-shortcut dialogs to reposition them. Positions are clamped to the viewport, reset when reopened, and double-clicking the title bar recenters.
 - **Small-screen controls**: below 480px the section tabs show icons only. Checkpoint, track-note and route-note headers are full-width collapse toggles, not just the chevron.
 - **Toast feedback**: Ant-Design-style elevated notices with success/error/info icons, soft shadows, top-center stacking and slide-fade motion.
@@ -43,8 +43,8 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
 - **Fullscreen preview**: click the preview image to open a full-viewport lightbox with wheel/trackpad zoom, pinch zoom on touch screens, drag-to-pan, double-click reset, and an optional native Fullscreen API button. Keyboard: `+`/`-` zoom, arrows pan, `0` reset, `Esc` close.
 - **Source link**: the sidebar footer GitHub icon opens the source repository.
-- **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
-- **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
+- **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the globe menu in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
+- **Dark / light UI**: the sun / moon / monitor menu in the top bar switches **Light / Dark / System**. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
 
 ## Quick Start
 
@@ -80,7 +80,7 @@ npm test
 ## Language / Internationalization
 
 - **Default language**: the first visit reads `navigator.languages`. Chinese locales such as `zh`, `zh-CN` and `zh-Hans` get Simplified Chinese; every other locale gets English.
-- **Switch and remember**: use the `EN / 中文` picker in the top bar. The choice is stored in `localStorage` under `track-layout:lang`.
+- **Switch and remember**: use the globe menu in the top bar. The choice is stored in `localStorage` under `track-layout:lang`.
 - **Coverage**: static UI, tabs, help dialog, map title/legend, CP list, route notices, toasts, sample names, theme names, and PNG/SVG title, legend and CP labels all follow the active language.
 - **Adding strings**: UI copy uses semantic English keys in the `MESSAGES` table in `js/i18n.js` (`key: { en, zh }`); legacy Chinese text in static HTML is mapped through `STATIC_TEXT`, and rich help HTML lives in `RICH`. Add entries when you add UI copy.
 - `html.i18n-pending` hides the UI until a language is applied, so English users do not see a flash of Chinese text.
@@ -175,7 +175,7 @@ Limitation: a custom base map only changes the display, not the coordinate syste
   - Rainbow: continuous full-spectrum light trail, Tesla style
 - **Route layer**: outline, glow, dashes, direction arrows (spacing / size / color). Automatic arrow spacing targets ~48 arrows with a 140 m minimum, so full-map routes stay readable.
 - **Checkpoints**: show / hide, display range, marker density, CP-style endpoints, uniform start/finish colours, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
-- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid (8 × 8 on the standard SA bounds), optional grid numbers (0 at the top-left, row-major), background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
+- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid (8 × 8 on the standard SA bounds), optional grid numbers (0 at the top-left, row-major), background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images and their bounds are not written to `localStorage` (too large); re-select the image and bounds after reload.
 - **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, overall scale, title font size, subtitle font size, legend background.
 
 Can visual styles be saved to JSON? Currently they are autosaved in `localStorage` only; **Save JSON** contains track data, not visual styles.

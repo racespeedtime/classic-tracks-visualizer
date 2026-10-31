@@ -58,11 +58,17 @@ const state = {
   singleKeyShortcuts: true,
   undoStack: [],
   redoStack: [],
-  playback: { playing: false, progress: 0, speed: 1, follow: true, raf: 0, lastTs: 0, path: null },
+  playback: {
+    playing: false, progress: 0, speed: 1, follow: true, heading: false,
+    bearing: 0, headingActive: false, scrubbing: false,
+    raf: 0, lastTs: 0, path: null,
+  },
   graph: null,
   netState: 'loading',
   samples: [],
   samplesLoading: true,
+  trackLoadSeq: 0,
+  customMapSeq: 0,
   sampleQuery: '',
   sampleFiltered: [],
   sampleWindow: null,
@@ -76,12 +82,16 @@ const state = {
   metaTimer: 0,
   miniTimer: 0,
   miniPreviewSeq: 0,
+  previewSeq: 0,
   activeTab: 'track',
   sheetSnap: 'half',
   sideCollapsed: false,
+  sideStatus: null,
   cpListCollapsed: false,
   cpWindow: null,
   cpScrollRaf: 0,
+  cpRevealTimer: 0,
+  suppressSave: false,
   warnListCollapsed: false,
   routeWarnCollapsed: false,
 };
@@ -385,11 +395,23 @@ function toast(message, kind = '') {
   spawnToast({ message, kind });
 }
 
-function setSideStatus(kind, text) {
+function setSideStatus(kind, text, key = '', args = []) {
+  state.sideStatus = { kind, text, key, args };
   const el = $('side-status');
   if (el) el.textContent = text;
   const dot = qs('.dot-live');
   if (dot) dot.className = `dot-live${kind === 'busy' ? ' busy' : kind === 'error' ? ' error' : ''}`;
+}
+
+function setStatus(kind, key, ...args) {
+  setSideStatus(kind, t(key, ...args), key, args);
+}
+
+function refreshSideStatus() {
+  const status = state.sideStatus;
+  if (!status) return;
+  const args = typeof status.args === 'function' ? status.args() : status.args;
+  setSideStatus(status.kind, status.key ? t(status.key, ...args) : status.text, status.key, status.args);
 }
 
 function setNetStatus(kind, text) {
@@ -431,16 +453,13 @@ function restorePrefs() {
   }
   state.cpLocked = typeof saved.cpLocked === 'boolean' ? saved.cpLocked : true;
   state.playback.follow = saved.playbackFollow !== false;
+  state.playback.heading = saved.playbackHeading === true;
   state.sideCollapsed = !!saved.sideCollapsed;
   if (['peek', 'half', 'full'].includes(saved.sheetSnap)) state.sheetSnap = saved.sheetSnap;
-  if (saved.base && saved.base.bounds) {
-    const b = saved.base.bounds;
-    if ([b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) && b.maxX > b.minX && b.maxY > b.minY) {
-      state.base.bounds = { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY };
-    }
-  }
-  // Custom base images are not persisted (too large for localStorage).
+  // Custom base images are not persisted (too large for localStorage), so a
+  // saved custom source and its bounds cannot be restored without the image.
   if (state.style.map.source === 'custom') state.style.map.source = 'builtin';
+  state.base.bounds = { ...SA_BOUNDS };
   state.exportOpts.width = clamp(Math.round(Number(state.exportOpts.width) || 1920), 320, 4096);
   state.exportOpts.height = clamp(Math.round(Number(state.exportOpts.height) || 1080), 320, 4096);
   return saved;
@@ -461,28 +480,44 @@ function migrateWhiteChocolateTheme() {
 }
 
 function saveSessionSoon() {
+  if (state.suppressSave) return;
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(saveSession, 350);
 }
 
 function saveSession() {
+  if (state.suppressSave) return;
   try {
     const payload = {
       v: 1,
       track: state.track ? Track.toJSON(state.track) : null,
       sampleFile: state.track && state.track.sampleFile ? state.track.sampleFile : null,
+      autoName: !!(state.track && state.track.autoName),
       empty: !state.track || !state.track.checkpoints.length,
       cpLocked: state.cpLocked,
       playbackFollow: state.playback.follow,
+      playbackHeading: state.playback.heading,
       sideCollapsed: state.sideCollapsed,
       sheetSnap: state.sheetSnap,
       routing: state.routing,
       style: state.style,
       exportOpts: state.exportOpts,
-      base: { bounds: state.base.bounds },
     };
     localStorage.setItem(APP_KEY, JSON.stringify(payload));
   } catch { /* quota / private mode */ }
+}
+
+function flushPendingSession() {
+  if (state.suppressSave) return;
+  if (state.track) {
+    const name = $('track-name').value.trim();
+    state.track.autoName = !name;
+    state.track.name = name || t("cp.untitled");
+    state.track.author = $('track-author').value.trim();
+  }
+  clearTimeout(state.saveTimer);
+  state.saveTimer = 0;
+  saveSession();
 }
 
 function loadSessionTrack(saved) {
@@ -491,6 +526,7 @@ function loadSessionTrack(saved) {
     const track = Track.parseTrack(JSON.stringify(saved.track), '上次会话.json');
     if (!track.checkpoints.length) return null;
     if (saved.sampleFile) track.sampleFile = saved.sampleFile;
+    track.autoName = saved.autoName === true;
     return track;
   } catch { return null; }
 }
@@ -498,12 +534,14 @@ function loadSessionTrack(saved) {
 // ── Track load / route ─────────────────────────────────────────────────
 function applyTrack(track, opts = {}) {
   if (!track) return;
+  state.trackLoadSeq++;
   if (!opts.preserveHistory) clearHistory();
   state.track = track;
+  state.track.autoName = track.autoName === true;
   state.routing.closed = !!track.closed;
   state.selected = -1;
   state.addMode = false;
-  MapView.setAddMode(false);
+  setAddMode(false);
   $('track-name').value = track.name || '';
   $('track-author').value = track.author || '';
   $('closed-toggle').checked = state.routing.closed;
@@ -533,12 +571,12 @@ function recomputeRoute(opts = {}) {
     renderCpList();
     renderWarnings();
     syncPlaybackUI();
-    setSideStatus('ready', t("status.ready"));
+    setStatus('ready', 'status.ready');
     return;
   }
   state.track.closed = !!state.routing.closed;
   Track.assignRoles(state.track);
-  setSideStatus('busy', state.graph ? t("status.calculating") : t("status.calculatingGraph"));
+  setStatus('busy', state.graph ? 'status.calculating' : 'status.calculatingGraph');
   let route;
   try {
     route = Track.computeRoute(state.track, state.graph, {
@@ -572,7 +610,7 @@ function recomputeRoute(opts = {}) {
     syncPlaybackUI();
     updateCpDensityHint();
     updateArrowAutoHint();
-    setSideStatus('error', t("status.routeFailed"));
+    setStatus('error', 'status.routeFailed');
     return;
   }
   state.route = route;
@@ -591,7 +629,14 @@ function recomputeRoute(opts = {}) {
   }
   renderWarnings();
   const km = route.length >= 1000 ? `${(route.length / 1000).toFixed(2)} km` : `${Math.round(route.length)} m`;
-  setSideStatus('ready', route.partial ? t("status.routeReadyPartial", km) : route.modeUsed === 'road' ? t("status.routeReady", km) : t("status.routeReady", modeLabel(route.modeUsed)));
+  if (route.partial) {
+    setStatus('ready', 'status.routeReadyPartial', km);
+  } else if (route.modeUsed === 'road') {
+    setStatus('ready', 'status.routeReady', km);
+  } else {
+    setSideStatus('ready', t('status.routeReady', modeLabel(route.modeUsed)),
+      'status.routeReady', () => [modeLabel(state.route && state.route.modeUsed)]);
+  }
   if (opts.fit) requestAnimationFrame(() => MapView.fitRoute());
   syncPlaybackUI();
   saveSessionSoon();
@@ -649,11 +694,18 @@ function updatePlaybackStatus() {
   const el = $('playback-status');
   const hudPct = $('playback-hud-pct');
   const hudFill = $('playback-hud-fill');
+  const hudThumb = $('playback-hud-thumb');
+  const track = $('playback-hud-track');
   const pb = state.playback;
   const pct = `${Math.round(pb.progress * 100)}%`;
   if (el) el.textContent = state.route ? pct : '—';
   if (hudPct) hudPct.textContent = pct;
   if (hudFill) hudFill.style.width = pct;
+  if (hudThumb) hudThumb.style.left = pct;
+  if (track) {
+    track.setAttribute('aria-valuenow', String(Math.round(pb.progress * 100)));
+    track.setAttribute('aria-valuetext', pct);
+  }
 }
 
 function syncPlaybackUI() {
@@ -678,8 +730,17 @@ function syncPlaybackUI() {
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
   const hud = $('playback-hud');
   if (hud) {
-    hud.classList.toggle('hidden', !hasRoute || (!pb.playing && pb.progress <= 0));
+    const track = $('playback-hud-track');
+    const trackFocused = !!track && document.activeElement === track;
+    hud.classList.toggle('hidden', !hasRoute || !pb.path ||
+      (!pb.playing && pb.progress <= 0 && !pb.scrubbing && !trackFocused));
     hud.classList.toggle('is-playing', pb.playing);
+    const workspace = $('workspace');
+    if (workspace) workspace.classList.toggle('hud-active', !hud.classList.contains('hidden'));
+    if (track) {
+      track.title = t('playback.progress');
+      track.setAttribute('aria-label', t('playback.progress'));
+    }
     const hudState = $('playback-hud-state');
     if (hudState) hudState.textContent = t(pb.playing ? 'playback.playing' : finished ? 'playback.finished' : 'playback.paused');
     const hudIcon = $('playback-hud-icon');
@@ -706,16 +767,66 @@ function syncPlaybackUI() {
     follow.disabled = !hasRoute;
     if (document.activeElement !== follow) follow.checked = pb.follow;
   }
+  const heading = $('playback-heading');
+  if (heading) {
+    heading.disabled = !hasRoute || !pb.follow;
+    if (document.activeElement !== heading) heading.checked = pb.heading;
+  }
   const out = $('playback-speed-out');
   if (out) out.textContent = `${Number(pb.speed).toFixed(1)}×`;
   updatePlaybackStatus();
 }
 
 function drawPlayback() {
-  const point = playbackPoint(state.playback.progress);
+  const pb = state.playback;
+  const point = playbackPoint(pb.progress);
   if (!point) return;
+  if (pb.follow && pb.heading) {
+    if (!pb.headingActive) {
+      pb.headingActive = true;
+      pb.bearing = point.angle;
+      MapView.setPlaybackBearing(pb.bearing);
+      MapView.setPlaybackHeading(true);
+    } else {
+      const delta = ((point.angle - pb.bearing + 540) % 360) - 180;
+      pb.bearing += delta * 0.22;
+      pb.bearing = ((pb.bearing + 540) % 360) - 180;
+      MapView.setPlaybackBearing(pb.bearing);
+    }
+  } else if (pb.headingActive) {
+    pb.headingActive = false;
+    pb.bearing = 0;
+    MapView.setPlaybackHeading(false);
+  }
   MapView.setPlaybackMarker(point);
-  if (state.playback.follow) MapView.centerOn(point);
+  if (pb.follow) MapView.centerOn(point);
+}
+
+function releasePlaybackHeading() {
+  const pb = state.playback;
+  pb.headingActive = false;
+  pb.bearing = 0;
+  MapView.setPlaybackHeading(false);
+}
+
+function setPlaybackProgress(progress, opts = {}) {
+  const pb = state.playback;
+  if (!pb.path || !Number.isFinite(progress)) return;
+  pb.progress = clamp(progress, 0, 1);
+  pb.lastTs = 0;
+  const point = playbackPoint(pb.progress);
+  if (point && pb.headingActive) {
+    pb.bearing = point.angle;
+    MapView.setPlaybackBearing(pb.bearing);
+  }
+  drawPlayback();
+  updatePlaybackStatus();
+  if (pb.progress >= 1 && pb.playing) {
+    pb.playing = false;
+    cancelAnimationFrame(pb.raf);
+    pb.raf = 0;
+  }
+  if (opts.sync) syncPlaybackUI();
 }
 
 function playbackTick(ts) {
@@ -745,7 +856,11 @@ function startPlayback() {
   }
   pb.path = buildPlaybackPath();
   if (!pb.path) return;
-  if (pb.progress >= 1) pb.progress = 0;
+  pb._wasPlaying = false;
+  if (pb.progress >= 1) {
+    pb.progress = 0;
+    releasePlaybackHeading();
+  }
   pb.playing = true;
   pb.lastTs = 0;
   drawPlayback();
@@ -757,6 +872,7 @@ function startPlayback() {
 function pausePlayback() {
   const pb = state.playback;
   pb.playing = false;
+  pb._wasPlaying = false;
   cancelAnimationFrame(pb.raf);
   pb.raf = 0;
   syncPlaybackUI();
@@ -764,12 +880,22 @@ function pausePlayback() {
 
 function resetPlayback() {
   const pb = state.playback;
+  const hud = $('playback-hud');
+  if (hud && hud.contains(document.activeElement)) {
+    const toggle = $('playback-toggle');
+    if (toggle && !toggle.disabled) toggle.focus({ preventScroll: true });
+  }
   pb.playing = false;
+  pb.scrubbing = false;
+  pb._wasPlaying = false;
   pb.progress = 0;
   pb.lastTs = 0;
   pb.path = null;
   cancelAnimationFrame(pb.raf);
   pb.raf = 0;
+  const track = $('playback-hud-track');
+  if (track) track.classList.remove('is-scrubbing');
+  releasePlaybackHeading();
   MapView.clearPlaybackMarker();
   syncPlaybackUI();
 }
@@ -781,6 +907,73 @@ function stopPlayback() {
 function togglePlayback() {
   if (state.playback.playing) pausePlayback();
   else startPlayback();
+}
+
+function bindPlaybackScrub() {
+  const track = $('playback-hud-track');
+  if (!track) return;
+  const pb = state.playback;
+
+  const seekAt = (clientX) => {
+    const rect = track.getBoundingClientRect();
+    if (!rect.width) return;
+    setPlaybackProgress(clamp((clientX - rect.left) / rect.width, 0, 1));
+  };
+
+  const endScrub = (ev) => {
+    if (!pb.scrubbing) return;
+    const resume = pb._wasPlaying === true;
+    pb._wasPlaying = false;
+    pb.scrubbing = false;
+    track.classList.remove('is-scrubbing');
+    try {
+      if (ev && track.hasPointerCapture && track.hasPointerCapture(ev.pointerId)) {
+        track.releasePointerCapture(ev.pointerId);
+      }
+    } catch { /* pointer may already be released */ }
+    syncPlaybackUI();
+    if (resume && pb.path && pb.progress < 1) startPlayback();
+  };
+
+  track.addEventListener('pointerdown', (ev) => {
+    if (!pb.path || ev.button !== 0) return;
+    pb._wasPlaying = pb.playing;
+    if (pb.playing) {
+      pb.playing = false;
+      cancelAnimationFrame(pb.raf);
+      pb.raf = 0;
+    }
+    pb.scrubbing = true;
+    track.classList.add('is-scrubbing');
+    track.focus({ preventScroll: true });
+    try { track.setPointerCapture(ev.pointerId); } catch { /* capture is optional */ }
+    seekAt(ev.clientX);
+    syncPlaybackUI();
+    ev.preventDefault();
+  });
+  track.addEventListener('pointermove', (ev) => {
+    if (!pb.scrubbing) return;
+    seekAt(ev.clientX);
+    ev.preventDefault();
+  });
+  track.addEventListener('pointerup', endScrub);
+  track.addEventListener('pointercancel', endScrub);
+  track.addEventListener('lostpointercapture', () => {
+    if (pb.scrubbing) endScrub(null);
+  });
+  track.addEventListener('keydown', (ev) => {
+    if (!pb.path) return;
+    const step = ev.shiftKey ? 0.1 : 0.01;
+    let next = null;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') next = pb.progress - step;
+    else if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') next = pb.progress + step;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = 1;
+    if (next === null) return;
+    ev.preventDefault();
+    setPlaybackProgress(next, { sync: true });
+  });
+  track.addEventListener('blur', () => syncPlaybackUI());
 }
 
 function bindPlayback() {
@@ -803,11 +996,26 @@ function bindPlayback() {
   if (follow) {
     follow.addEventListener('change', () => {
       state.playback.follow = follow.checked;
+      if (!state.playback.follow) releasePlaybackHeading();
       syncPlaybackUI();
       saveSessionSoon();
       if (state.playback.follow && state.playback.path) drawPlayback();
     });
   }
+  const heading = $('playback-heading');
+  if (heading) {
+    heading.addEventListener('change', () => {
+      state.playback.heading = heading.checked;
+      if (!state.playback.heading) releasePlaybackHeading();
+      syncPlaybackUI();
+      saveSessionSoon();
+      if (state.playback.heading && state.playback.follow &&
+          state.playback.path && state.playback.progress > 0) {
+        drawPlayback();
+      }
+    });
+  }
+  bindPlaybackScrub();
   syncPlaybackUI();
 }
 
@@ -815,8 +1023,10 @@ function bindPlaybackFollowGuard() {
   const map = MapView.map();
   if (!map) return;
   const release = () => {
-    if (!state.playback.follow || state.playback.progress <= 0) return;
+    if (!state.playback.follow) return;
+    if (!state.playback.path && state.playback.progress <= 0) return;
     state.playback.follow = false;
+    releasePlaybackHeading();
     syncPlaybackUI();
     saveSessionSoon();
   };
@@ -866,6 +1076,40 @@ function syncSheetA11y() {
   }
   const side = $('side');
   if (side) side.classList.toggle('is-peek', peek);
+  syncSideInteractivity();
+  syncMapViewportInset();
+}
+
+function syncSideInteractivity() {
+  const emptyState = $('empty-state');
+  const emptyVisible = !!emptyState && !emptyState.classList.contains('hidden');
+  const hidden = emptyVisible || (state.sideCollapsed && !sheetMode()) ||
+    (sheetMode() && state.sheetSnap === 'peek');
+  const tabs = $('tabs');
+  if (tabs) {
+    tabs.inert = hidden;
+    tabs.setAttribute('aria-hidden', String(hidden));
+  }
+  for (const pane of qsa('.pane')) {
+    pane.inert = hidden;
+    pane.setAttribute('aria-hidden', String(hidden));
+  }
+  if (hidden) {
+    const side = $('side');
+    const active = document.activeElement;
+    if (side && side.contains(active) && active !== $('sheet-handle')) {
+      const target = emptyVisible
+        ? qs('.empty-card [data-action="open-json"]')
+        : sheetMode() ? $('sheet-toggle') : $('side-toggle');
+      if (target) target.focus({ preventScroll: true });
+    }
+  }
+}
+
+function syncMapViewportInset() {
+  const side = $('side');
+  const bottom = sheetMode() && side ? side.getBoundingClientRect().height : 0;
+  MapView.setViewportInset(bottom);
 }
 
 function syncSideCollapseUi() {
@@ -879,6 +1123,7 @@ function syncSideCollapseUi() {
     btn.setAttribute('aria-expanded', String(!collapsed));
   }
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-panel-right-${collapsed ? 'open' : 'close'}`);
+  syncSideInteractivity();
 }
 
 function setSheetHeightVar(height) {
@@ -896,6 +1141,7 @@ function setSheetSnap(snap, opts = {}) {
   if (side) {
     side.style.height = `${height}px`;
     side.classList.remove('is-dragging');
+    side.scrollTop = 0;
   }
   sheetState.height = height;
   setSheetHeightVar(height);
@@ -948,6 +1194,7 @@ function initSheet() {
       workspace.classList.remove('side-collapsed');
       syncSideCollapseUi();
     }
+    syncMapViewportInset();
     setTimeout(() => {
       const map = MapView.map();
       if (map) map.invalidateSize({ pan: false });
@@ -977,20 +1224,24 @@ function setActionsOpen(open) {
   const icon = $('actions-toggle-icon');
   if (!menu || !btn) return;
   if (!actionsMenuMode()) open = false;
+  if (open) {
+    clearTimeout(menu._sampleCloseTimer);
+    menu._sampleCloseTimer = 0;
+  }
   menu.classList.toggle('is-open', open);
   menu.classList.remove('is-sample-open');
   btn.setAttribute('aria-expanded', String(open));
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${open ? 'x' : 'menu'}`);
   if (open) {
-    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+    if (qsa('details.menu[open]').length) closeMenus();
     menu.scrollTop = 0;
     requestAnimationFrame(() => {
       const first = menu.querySelector('.btn:not(.side-toggle), select');
       if (first) first.focus({ preventScroll: true });
     });
   } else {
-    if (menu.contains(document.activeElement)) btn.focus({ preventScroll: true });
-    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+    if (actionsMenuMode() && menu.contains(document.activeElement)) btn.focus({ preventScroll: true });
+    closeMenus();
   }
 }
 
@@ -1005,7 +1256,17 @@ function bindActionsMenu() {
   });
 
   menu.addEventListener('click', (ev) => {
-    if (ev.target.closest('[data-action], .sample-item')) setActionsOpen(false);
+    if (ev.target.closest('.sample-item')) {
+      if (actionsMenuMode()) {
+        clearTimeout(menu._sampleCloseTimer);
+        menu._sampleCloseTimer = setTimeout(() => setActionsOpen(false), 170);
+      }
+      return;
+    }
+    if (ev.target.closest('[data-action]') ||
+        (actionsMenuMode() && ev.target.closest('.icon-option'))) {
+      setActionsOpen(false);
+    }
   });
   menu.addEventListener('change', (ev) => {
     if (ev.target instanceof HTMLSelectElement) setActionsOpen(false);
@@ -1024,7 +1285,9 @@ function bindActionsMenu() {
 
   document.addEventListener('click', (ev) => {
     if (!menu.classList.contains('is-open')) return;
-    if (ev.target.closest('#top-actions, #actions-toggle')) return;
+    // The sidebar's "all samples" chip intentionally opens this panel; its
+    // original click must not then be treated as an outside click.
+    if (ev.target.closest('#top-actions, #actions-toggle, [data-action="open-samples-menu"]')) return;
     setActionsOpen(false);
   });
 
@@ -1090,6 +1353,7 @@ function bindSheet() {
 
   handle.addEventListener('pointerup', finishDrag);
   handle.addEventListener('pointercancel', finishDrag);
+  handle.addEventListener('lostpointercapture', finishDrag);
 
   handle.addEventListener('keydown', (ev) => {
     if (!sheetMode()) return;
@@ -1350,18 +1614,44 @@ function refreshCpBadges() {
   }
 }
 
+function revealCpInPane(row) {
+  const pane = row.closest('.pane');
+  if (!pane || !pane.classList.contains('active')) return;
+  const paneRect = pane.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const pad = 12;
+  if (rowRect.top >= paneRect.top + pad && rowRect.bottom <= paneRect.bottom - pad) return;
+  const target = pane.scrollTop + rowRect.top - paneRect.top - pad;
+  const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  pane.scrollTop = Math.min(max, Math.max(0, target));
+}
+
 function selectCp(index, opts = {}) {
   if (!state.track || index < 0 || index >= state.track.checkpoints.length) return;
   state.selected = index;
   qsa('.cp-row', $('cp-list')).forEach((row) => row.classList.toggle('is-selected', Number(row.dataset.i) === index));
   MapView.setSelected(index);
+  if (opts.scroll !== false && sheetMode() && state.activeTab === 'track' && state.sheetSnap === 'peek') {
+    setSheetSnap('half');
+  }
   if (opts.focus !== false) MapView.focusCp(state.track.checkpoints[index]);
   if (opts.scroll !== false) {
+    // Scroll only the virtual list and its pane. scrollIntoView() would also
+    // scroll #side (overflow:hidden is still programmatically scrollable),
+    // hiding the sheet handle.
     const row = ensureCpRowVisible(index);
-    if (row) row.scrollIntoView({
-      block: 'nearest',
-      behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    });
+    if (row) {
+      clearTimeout(state.cpRevealTimer);
+      if (sheetMode()) {
+        // Let the sheet height transition settle before scrolling the pane.
+        state.cpRevealTimer = setTimeout(() => {
+          const target = qs(`.cp-row[data-i="${index}"]`, $('cp-list'));
+          if (target) revealCpInPane(target);
+        }, 260);
+      } else {
+        revealCpInPane(row);
+      }
+    }
   }
 }
 
@@ -1369,6 +1659,7 @@ function captureTrackSnapshot() {
   return {
     track: state.track ? Track.toJSON(state.track) : null,
     sampleFile: state.track && state.track.sampleFile ? state.track.sampleFile : null,
+    autoName: !!(state.track && state.track.autoName),
     selected: state.selected,
   };
 }
@@ -1395,13 +1686,14 @@ function pushUndoSnapshot() {
 
 function restoreEmptyTrackState() {
   clearTimeout(state.routeTimer);
+  state.trackLoadSeq++;
   resetPlayback();
   state.track = null;
   state.route = null;
   state.selected = -1;
   state.addMode = false;
   state.routing.closed = false;
-  MapView.setAddMode(false);
+  setAddMode(false);
   $('empty-state').classList.remove('hidden');
   $('track-name').value = '';
   $('track-author').value = '';
@@ -1411,7 +1703,7 @@ function restoreEmptyTrackState() {
   renderCpList();
   renderWarnings();
   updateDocumentTitle();
-  setSideStatus('ready', t("status.ready"));
+  setStatus('ready', 'status.ready');
   saveSessionSoon();
 }
 
@@ -1423,6 +1715,7 @@ function restoreTrackSnapshot(snapshot) {
   clearTimeout(state.routeTimer);
   const track = Track.parseTrack(JSON.stringify(snapshot.track), snapshot.sampleFile || 'history.json');
   if (snapshot.sampleFile) track.sampleFile = snapshot.sampleFile;
+  track.autoName = snapshot.autoName === true;
   applyTrack(track, { fit: false, preserveHistory: true });
   const index = Number.isInteger(snapshot.selected)
     ? Math.min(snapshot.selected, track.checkpoints.length - 1)
@@ -1468,6 +1761,13 @@ function syncCpLockButton() {
 
 function toggleCpLock() {
   state.cpLocked = !state.cpLocked;
+  if (!state.cpLocked && state.playback.headingActive) {
+    // Rotated map coordinates are not suitable for marker dragging. Leave the
+    // heading-up camera when the user explicitly unlocks checkpoints to edit.
+    state.playback.follow = false;
+    releasePlaybackHeading();
+    syncPlaybackUI();
+  }
   MapView.setCpLocked(state.cpLocked);
   syncCpLockButton();
   saveSessionSoon();
@@ -1515,10 +1815,12 @@ function ensureTrack() {
     checkpoints: [],
     warnings: [],
     sourceName: '',
+    autoName: true,
   };
   state.track = track;
   state.routing.closed = false;
   $('empty-state').classList.add('hidden');
+  syncSideInteractivity();
   $('track-name').value = track.name;
   $('closed-toggle').checked = false;
   updateDocumentTitle();
@@ -1548,8 +1850,18 @@ function addCpAt(x, y) {
 
 function setAddMode(on) {
   state.addMode = !!on;
+  if (state.addMode && state.playback.headingActive) {
+    // Map clicks are intentionally disabled while the pane is rotated; leave
+    // heading-up before entering add mode so coordinate picking stays correct.
+    state.playback.follow = false;
+    releasePlaybackHeading();
+    syncPlaybackUI();
+    saveSessionSoon();
+  }
   if (state.addMode) ensureTrack();
   MapView.setAddMode(state.addMode);
+  const workspace = $('workspace');
+  if (workspace) workspace.classList.toggle('add-mode', state.addMode);
   const btn = $('btn-add-cp');
   if (btn) btn.classList.toggle('active', state.addMode);
   const mapBtn = qs('.map-btn[data-action="add-cp"]');
@@ -1565,6 +1877,7 @@ function toggleAddMode() {
 
 function newTrack() {
   if (state.track && !confirm(t("cp.newConfirm"))) return;
+  state.trackLoadSeq++;
   clearHistory();
   resetPlayback();
   state.track = null;
@@ -1572,7 +1885,7 @@ function newTrack() {
   state.selected = -1;
   state.routing.closed = false;
   state.addMode = false;
-  MapView.setAddMode(false);
+  setAddMode(false);
   $('track-name').value = '';
   $('track-author').value = '';
   $('closed-toggle').checked = false;
@@ -1585,13 +1898,16 @@ function newTrack() {
   syncAll();
   renderCpList();
   renderWarnings();
-  setSideStatus('ready', t("status.ready"));
+  setStatus('ready', 'status.ready');
   saveSessionSoon();
   toast(t("cp.newBlank"));
 }
 
 async function clearLocalCache() {
   if (!confirm(t("dialog.clearCache"))) return;
+  state.suppressSave = true;
+  clearTimeout(state.saveTimer);
+  state.saveTimer = 0;
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith('track-layout:')) localStorage.removeItem(key);
@@ -2029,9 +2345,15 @@ function syncExportInputs() {
   if (h) h.value = String(state.exportOpts.height);
   const preset = $('export-preset');
   if (preset) {
-    const found = Style.EXPORT_PRESETS.find((p) => p.w === Number(state.exportOpts.width) && p.h === Number(state.exportOpts.height));
-    preset.value = found ? found.key : 'custom';
-    state.exportOpts.preset = preset.value;
+    const known = Style.EXPORT_PRESETS.some((p) => p.key === state.exportOpts.preset);
+    if (state.exportOpts.preset === 'custom' || known) {
+      preset.value = state.exportOpts.preset;
+    } else {
+      const found = Style.EXPORT_PRESETS.find((p) =>
+        p.w === Number(state.exportOpts.width) && p.h === Number(state.exportOpts.height));
+      preset.value = found ? found.key : 'custom';
+      state.exportOpts.preset = preset.value;
+    }
   }
   const hint = $('format-hint');
   if (hint) {
@@ -2467,6 +2789,7 @@ function toggleCpVisible() {
 
 // ── Base map ───────────────────────────────────────────────────────────
 async function setBuiltinBase(fit = true) {
+  state.customMapSeq++;
   state.base.source = 'builtin';
   state.base.bounds = { ...SA_BOUNDS };
   state.style.map.source = 'builtin';
@@ -2486,18 +2809,21 @@ async function loadCustomMap(file) {
     toast(t("error.imageTooLarge"), 'error');
     return;
   }
+  const seq = ++state.customMapSeq;
   const url = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(new Error(t("error.readImage")));
     reader.readAsDataURL(file);
   });
+  if (seq !== state.customMapSeq) return;
   await new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = resolve;
     img.onerror = () => reject(new Error(t("error.imageDecode")));
     img.src = url;
   }).catch((err) => { toast(err.message, 'error'); throw err; });
+  if (seq !== state.customMapSeq) return;
 
   state.base.customUrl = url;
   state.base.customName = file.name;
@@ -2507,6 +2833,7 @@ async function loadCustomMap(file) {
   syncStyleInputs();
   updateConditional();
   await MapView.setBaseMap(url, state.base.bounds, true);
+  if (seq !== state.customMapSeq) return;
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
   toast(t("toast.mapLoaded", file.name), 'ok');
@@ -2548,22 +2875,26 @@ function openFilePicker() {
 
 async function readTrackFile(file) {
   if (!file) return;
+  const seq = ++state.trackLoadSeq;
   try {
     const text = await file.text();
+    if (seq !== state.trackLoadSeq) return;
     const track = Track.parseTrack(text, file.name);
     applyTrack(track, { fit: true, toast: t("cp.loaded", track.name, track.checkpoints.length) });
   } catch (err) {
-    toast(t("error.load", I18n.errorText(err)), 'error');
+    if (seq === state.trackLoadSeq) toast(t("error.load", I18n.errorText(err)), 'error');
   }
 }
 
 async function loadSample(file, opts = {}) {
   if (!file) return;
+  const seq = ++state.trackLoadSeq;
   const url = /\.json$/i.test(file) ? `samples/${file}` : `samples/${file}.json`;
   try {
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
+    if (seq !== state.trackLoadSeq) return;
     const track = Track.parseTrack(text, file);
     const sample = findSampleMeta(file);
     if (sample) {
@@ -2574,7 +2905,7 @@ async function loadSample(file, opts = {}) {
     applyTrack(track, { fit: true, toast: opts.silent ? null : t("sample.loaded", track.name) });
     for (const dlg of qsa('dialog[open]')) closeDialog(dlg);
   } catch (err) {
-    toast(t("error.sampleLoad", I18n.errorText(err)), 'error');
+    if (seq === state.trackLoadSeq) toast(t("error.sampleLoad", I18n.errorText(err)), 'error');
   }
 }
 
@@ -2755,6 +3086,7 @@ function openSamplesMenu() {
   const wasOpen = actions ? actions.classList.contains('is-open') : false;
   if (actionsMenuMode()) setActionsOpen(true);
   menu._autoOpenedActions = actionsMenuMode() && !wasOpen;
+  cancelMenuClose(menu);
   menu.open = true;
   renderSampleMenu();
   requestAnimationFrame(() => {
@@ -2852,12 +3184,13 @@ async function ensureExportReady() {
 async function openPreview() {
   if (!(await ensureExportReady())) return;
   clearTimeout(state.miniTimer);
-  const seq = ++state.miniPreviewSeq;
+  const seq = ++state.previewSeq;
   setMiniPreviewLoading(true);
-  setSideStatus('busy', t("status.renderingPreview"));
+  setStatus('busy', 'status.renderingPreview');
   await nextFrame();
   try {
     const { canvas } = Exporter.renderCanvas(buildExportOptions());
+    if (seq !== state.previewSeq) return;
 
     const url = canvas.toDataURL('image/png');
     $('preview-img').src = url;
@@ -2869,13 +3202,13 @@ async function openPreview() {
     updatePreviewLabels();
     openDialog($('preview-dialog'));
     await updateMiniPreview(canvas);
-    setSideStatus('ready', t("status.previewReady"));
+    setStatus('ready', 'status.previewReady');
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t("status.previewFailed"));
+    setStatus('error', 'status.previewFailed');
     toast(t("error.preview", I18n.errorText(err)), 'error');
   } finally {
-    if (seq === state.miniPreviewSeq) setMiniPreviewLoading(false);
+    if (seq === state.previewSeq) setMiniPreviewLoading(false);
   }
 }
 
@@ -3223,6 +3556,7 @@ function scheduleMiniPreview(delay = 600) {
   const seq = ++state.miniPreviewSeq;
   setMiniPreviewLoading(true);
   state.miniTimer = setTimeout(async () => {
+    if (seq !== state.miniPreviewSeq) return;
     if (state.activeTab !== 'export' || !state.track || !state.route) {
       if (seq === state.miniPreviewSeq) setMiniPreviewLoading(false);
       return;
@@ -3231,6 +3565,7 @@ function scheduleMiniPreview(delay = 600) {
       const w = 720;
       const h = Math.max(1, Math.round(720 * (state.exportOpts.height / state.exportOpts.width)));
       const { canvas } = Exporter.renderCanvas(buildExportOptions({ width: w, height: h }));
+      if (seq !== state.miniPreviewSeq) return;
       await updateMiniPreview(canvas);
     } catch (err) {
       console.warn('mini preview failed', err);
@@ -3242,7 +3577,7 @@ function scheduleMiniPreview(delay = 600) {
 
 async function downloadPNG() {
   if (!(await ensureExportReady())) return;
-  setSideStatus('busy', t("status.renderingPng"));
+  setStatus('busy', 'status.renderingPng');
   await nextFrame();
   try {
     const { canvas } = Exporter.renderCanvas(buildExportOptions());
@@ -3251,18 +3586,18 @@ async function downloadPNG() {
     const name = `${safeFileName(state.track.name)}-${canvas.width}x${canvas.height}.png`;
     downloadBlob(blob, name);
 
-    setSideStatus('ready', t("status.pngExported"));
+    setStatus('ready', 'status.pngExported');
     toast(t("toast.exported", name), 'ok');
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t("status.exportFailed"));
+    setStatus('error', 'status.exportFailed');
     toast(t("error.pngExport", I18n.errorText(err)), 'error');
   }
 }
 
 async function downloadSVG() {
   if (!(await ensureExportReady())) return;
-  setSideStatus('busy', t("status.renderingSvg"));
+  setStatus('busy', 'status.renderingSvg');
   await nextFrame();
   try {
     const svg = Exporter.renderSVG(buildExportOptions());
@@ -3270,11 +3605,11 @@ async function downloadSVG() {
     const h = clamp(Math.round(Number(state.exportOpts.height) || 1080), 320, 4096);
     const name = `${safeFileName(state.track.name)}-${w}x${h}.svg`;
     downloadText(name, svg, 'image/svg+xml');
-    setSideStatus('ready', t("status.svgExported"));
+    setStatus('ready', 'status.svgExported');
     toast(t("toast.exported", name), 'ok');
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t("status.svgExportFailed"));
+    setStatus('error', 'status.svgExportFailed');
     toast(t("error.svgExport", I18n.errorText(err)), 'error');
   }
 }
@@ -3296,7 +3631,7 @@ function downloadText(name, text, mime) {
 async function loadGraph() {
   state.netState = 'loading';
   refreshNetStatus();
-  setSideStatus('busy', t("status.loadingRoadGraphData"));
+  setStatus('busy', 'status.loadingRoadGraphData');
   try {
     const res = await fetch('data/nodes.json', { cache: 'force-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -3308,7 +3643,7 @@ async function loadGraph() {
     state.graphMs = ms;
 
     refreshNetStatus();
-    setSideStatus('ready', t("status.roadGraphReady", ms.toFixed(0)));
+    setStatus('ready', 'status.roadGraphReady', ms.toFixed(0));
     if (state.track && (state.routing.mode === 'auto' || state.routing.mode === 'road')) {
       recomputeRoute({ fit: false, markers: true });
     }
@@ -3318,7 +3653,7 @@ async function loadGraph() {
     state.graph = null;
     state.netState = 'error';
     refreshNetStatus();
-    setSideStatus('error', t("status.roadGraphFailed"));
+    setStatus('error', 'status.roadGraphFailed');
     toast(t("error.roadGraphFailed", I18n.errorText(err)), 'error');
   }
 }
@@ -3338,6 +3673,11 @@ function bindUi() {
   let viewportResizeTimer = 0;
   document.addEventListener('input', (ev) => {
     if (ev.target instanceof HTMLInputElement && ev.target.type === 'range') updateRangeFill(ev.target);
+  });
+
+  window.addEventListener('pagehide', flushPendingSession);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPendingSession();
   });
 
   // Tabs
@@ -3442,19 +3782,8 @@ function bindUi() {
     });
   }
 
-  // Language picker
-  const langSel = $('lang-select');
-  if (langSel) {
-    langSel.value = I18n.getLanguage();
-    langSel.addEventListener('change', (ev) => switchLanguage(ev.target.value));
-  }
-
-  // Appearance picker
-  const themeSel = $('theme-select');
-  if (themeSel) {
-    themeSel.value = themeMode;
-    themeSel.addEventListener('change', (ev) => setThemeMode(ev.target.value));
-  }
+  // Language / appearance icon menus
+  bindAppearanceMenus();
 
   // Action buttons (delegated so sample buttons / dialogs work too)
   document.addEventListener('click', (ev) => {
@@ -3545,7 +3874,9 @@ function bindUi() {
   // Track meta
   const onMeta = () => {
     if (!state.track) return;
-    state.track.name = $('track-name').value.trim() || t("cp.untitled");
+    const name = $('track-name').value.trim();
+    state.track.autoName = !name;
+    state.track.name = name || t("cp.untitled");
     state.track.author = $('track-author').value.trim();
     updateDocumentTitle();
     MapView.refreshOverlays();
@@ -3620,10 +3951,6 @@ function bindUi() {
       renderSampleWindow(true);
       const map = MapView.map();
       if (map) map.invalidateSize({ pan: false });
-      requestAnimationFrame(() => {
-        if (state.track) MapView.fitRoute();
-        else MapView.fitBase();
-      });
     }, 180);
   });
 
@@ -3782,7 +4109,7 @@ function bindUi() {
       return;
     }
     if (ev.key === 'Escape') {
-      if ($('samples-menu') && $('samples-menu').open) { closeMenus(); return; }
+      if (qsa('details.menu[open]').length) { closeMenus(); return; }
       if ($('top-actions') && $('top-actions').classList.contains('is-open')) { setActionsOpen(false); return; }
       if (state.addMode) {
         setAddMode(false);
@@ -3967,9 +4294,43 @@ function runAction(action) {
   }
 }
 
+function hideMenuNow(details) {
+  if (!details) return;
+  if (details._closeTimer) clearTimeout(details._closeTimer);
+  details._closeTimer = 0;
+  details._closing = false;
+  details.classList.remove('is-closing');
+  if (details.open) details.removeAttribute('open');
+  if (details.id === 'samples-menu') resetSampleSearch();
+}
+
+function cancelMenuClose(details) {
+  if (!details) return;
+  if (details._closeTimer) clearTimeout(details._closeTimer);
+  details._closeTimer = 0;
+  details._closing = false;
+  details.classList.remove('is-closing');
+}
+
+function closeMenu(details) {
+  if (!details || !details.open || details._closing) return;
+  details._closing = true;
+  details.classList.add('is-closing');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const delay = reduce ? 0 : 160;
+  details._closeTimer = setTimeout(() => {
+    details.removeAttribute('open');
+    details.classList.remove('is-closing');
+    details._closing = false;
+    details._closeTimer = 0;
+    if (details.id === 'samples-menu') resetSampleSearch();
+  }, delay);
+}
+
 function closeMenus() {
-  for (const d of qsa('details.menu[open]')) d.removeAttribute('open');
-  resetSampleSearch();
+  const samplesMenu = $('samples-menu');
+  for (const details of qsa('details.menu[open]')) closeMenu(details);
+  if (!samplesMenu || !samplesMenu.open) resetSampleSearch();
 }
 
 async function copyText(text) {
@@ -3999,7 +4360,12 @@ const mapHandlers = {
     }
   },
   onSelect(index) {
-    if (state.track) selectCp(index, { focus: false, scroll: true });
+    if (!state.track) return;
+    if (sheetMode() && state.activeTab !== 'track') {
+      const trackTab = qs('.tab[data-tab="track"]');
+      if (trackTab) trackTab.click();
+    }
+    selectCp(index, { focus: false, scroll: true });
   },
   onCpDragStart(index) {
     if (state.cpLocked) return;
@@ -4012,7 +4378,6 @@ const mapHandlers = {
     if (!cp) return;
     cp.x = x;
     cp.y = y;
-    cp.hasZ = true;
     const row = qs(`.cp-row[data-i="${index}"]`, $('cp-list'));
     if (row) {
       const xi = qs('.cp-input[data-axis="x"]', row);
@@ -4028,7 +4393,6 @@ const mapHandlers = {
     if (!cp) return;
     cp.x = x;
     cp.y = y;
-    cp.hasZ = true;
     clearTimeout(state.routeTimer);
     selectCp(index, { focus: false, scroll: false });
     recomputeRoute({ fit: false, markers: true });
@@ -4062,10 +4426,100 @@ function applyThemeMode(mode, opts = {}) {
   document.documentElement.style.colorScheme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = theme === 'light' ? '#f2f4f8' : '#0a0c12';
-  const select = $('theme-select');
-  if (select) select.value = themeMode;
+  syncAppearanceMenus();
   if (opts.persist) {
     try { localStorage.setItem(THEME_KEY, themeMode); } catch { /* storage may be unavailable */ }
+  }
+}
+
+function syncAppearanceMenus() {
+  const lang = I18n.getLanguage();
+  const langMenu = $('lang-menu');
+  if (langMenu) {
+    const summary = qs('summary', langMenu);
+    const label = `${t("appearance.language")} · ${lang === 'zh' ? '中文' : 'English'}`;
+    if (summary) {
+      summary.title = label;
+      summary.setAttribute('aria-label', label);
+    }
+    for (const btn of qsa('[data-lang]', langMenu)) {
+      const active = btn.dataset.lang === lang;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+
+  const themeMenu = $('theme-menu');
+  if (themeMenu) {
+    const mode = normalizeThemeMode(themeMode);
+    const label = `${t("appearance.theme")} · ${t(`appearance.${mode}`)}`;
+    const summary = qs('summary', themeMenu);
+    if (summary) {
+      summary.title = label;
+      summary.setAttribute('aria-label', label);
+    }
+    const icon = $('theme-menu-icon');
+    if (icon) {
+      const iconName = mode === 'light' ? 'sun' : mode === 'dark' ? 'moon' : 'monitor';
+      icon.setAttribute('href', `assets/icons/sprite.svg#i-${iconName}`);
+    }
+    for (const btn of qsa('[data-theme-mode]', themeMenu)) {
+      const value = normalizeThemeMode(btn.dataset.themeMode);
+      const name = qs('.mi-name', btn);
+      if (name) name.textContent = t(`appearance.${value}`);
+      const active = value === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+}
+
+function bindAppearanceMenus() {
+  const langMenu = $('lang-menu');
+  if (langMenu) {
+    langMenu.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-lang]');
+      if (!btn) return;
+      switchLanguage(btn.dataset.lang);
+      closeMenu(langMenu);
+      if (!actionsMenuMode()) {
+        const summary = qs('summary', langMenu);
+        if (summary) summary.focus({ preventScroll: true });
+      }
+    });
+  }
+  const themeMenu = $('theme-menu');
+  if (themeMenu) {
+    themeMenu.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-theme-mode]');
+      if (!btn) return;
+      setThemeMode(btn.dataset.themeMode);
+      closeMenu(themeMenu);
+      if (!actionsMenuMode()) {
+        const summary = qs('summary', themeMenu);
+        if (summary) summary.focus({ preventScroll: true });
+      }
+    });
+  }
+
+  for (const details of qsa('details.menu')) {
+    details.addEventListener('toggle', () => {
+      if (!details.open) return;
+      cancelMenuClose(details);
+      for (const other of qsa('details.menu[open]')) {
+        if (other !== details) hideMenuNow(other);
+      }
+    });
+  }
+
+  for (const summary of qsa('details.menu > summary')) {
+    summary.addEventListener('click', (ev) => {
+      const details = summary.parentElement;
+      if (!details || !details.open) return;
+      ev.preventDefault();
+      if (details._closing) cancelMenuClose(details);
+      else closeMenu(details);
+    });
   }
 }
 
@@ -4106,12 +4560,10 @@ function localizeSampleTrack() {
 }
 
 function localizeUntitledTrack() {
-  if (!state.track) return;
-  if (state.track.name === '未命名赛道' || state.track.name === 'Untitled track') {
-    state.track.name = t("cp.untitled");
-    const input = $('track-name');
-    if (input && document.activeElement !== input) input.value = state.track.name;
-  }
+  if (!state.track || state.track.autoName !== true) return;
+  state.track.name = t("cp.untitled");
+  const input = $('track-name');
+  if (input && document.activeElement !== input) input.value = state.track.name;
 }
 
 function refreshLanguage() {
@@ -4125,26 +4577,32 @@ function refreshLanguage() {
   syncRouteWarnCollapseButton();
   syncRangeHelperLabels();
   syncPlaybackUI();
+  syncAppearanceMenus();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();
   if (state.track) {
-    recomputeRoute({ fit: false, markers: true, silent: true });
+    renderCpList();
+    MapView.setData({
+      track: state.track,
+      route: state.route,
+      style: state.style,
+      selected: state.selected,
+    });
   } else {
     syncAll();
     renderCpList();
     renderWarnings();
-    setSideStatus('ready', t("status.ready"));
+    setStatus('ready', 'status.ready');
   }
   syncAll();
+  refreshSideStatus();
   if (state.activeTab === 'export') scheduleMiniPreview(120);
   saveSessionSoon();
 }
 
 function switchLanguage(lang) {
   I18n.setLanguage(lang, () => {
-    const select = $('lang-select');
-    if (select) select.value = I18n.getLanguage();
     refreshLanguage();
   });
 }
@@ -4170,7 +4628,7 @@ async function boot() {
   renderSampleChips();
   updateDocumentTitle();
   refreshNetStatus();
-  setSideStatus('ready', t("status.ready"));
+  setStatus('ready', 'status.ready');
 
   MapView.setBaseMap('assets/samap.png', SA_BOUNDS, false).then(() => {
     MapView.setStyleOnly(state.style);
@@ -4194,7 +4652,7 @@ async function boot() {
     // First visit: show the featured classic sample instead of an empty map.
     loadSample(DEFAULT_SAMPLE, { silent: true });
   }
-  setSideStatus('ready', t("status.ready"));
+  setStatus('ready', 'status.ready');
 }
 
 boot();
