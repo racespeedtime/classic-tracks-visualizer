@@ -197,8 +197,8 @@
   function drawGrid(ctx, map, style, layout, includeMap = true) {
     if (!style.map.grid) return;
     const view = layout.view;
-    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
-    const step = Style.gridStep(gridBounds);
+    const gridReference = map && map.bounds ? map.bounds : view;
+    const step = Style.gridStep(gridReference);
     const startX = Math.ceil(view.minX / step) * step;
     const startY = Math.ceil(view.minY / step) * step;
     ctx.save();
@@ -225,6 +225,17 @@
       ctx.lineTo(layout.width, py);
     }
     ctx.stroke();
+    if (style.map.gridNumbers) {
+      const alpha = Style.gridNumberAlpha(style.map);
+      ctx.fillStyle = Style.withAlpha(style.map.gridColor, alpha);
+      ctx.font = `600 ${Math.max(8, 9 * layout.k)}px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const cell of Style.gridCells(gridReference, step)) {
+        if (cell.x < view.minX || cell.x > view.maxX || cell.y < view.minY || cell.y > view.maxY) continue;
+        ctx.fillText(String(cell.index), layout.xToPx(cell.x), layout.yToPx(cell.y));
+      }
+    }
     ctx.restore();
   }
 
@@ -296,7 +307,8 @@
     const arrows = Track.sampleArrows(route.points, Math.max(20, style.route.arrowGap), false);
     if (!arrows.length) return;
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
-    const cpsPx = (style.cp.visible === false ? [] : (track.checkpoints || [])).map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
+    const cpsPx = Style.visibleCheckpoints(track, style)
+      .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
 
     ctx.save();
@@ -354,7 +366,6 @@
   }
 
   function drawMarkers(ctx, track, style, layout) {
-    if (style.cp.visible === false) return;
     const cps = track.checkpoints || [];
     if (!cps.length) return;
     const s = style.cp;
@@ -364,11 +375,12 @@
 
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
+      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
       const x = layout.xToPx(cp.x);
       const y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
-      const label = Style.markerLabel(cp, i);
+      const label = Style.markerLabel(cp, i, style);
 
       if (s.halo) {
         ctx.beginPath();
@@ -401,7 +413,7 @@
       }
 
       if (s.showLabels) {
-        const labelText = cp.label || I18n.roleLabel(cp, i);
+        const labelText = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i));
         ctx.font = `600 ${Math.max(8, 11.5 * layout.k)}px ${FONT}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -457,7 +469,21 @@
     return lo > 0 ? `${chars.slice(0, lo).join('').trimEnd()}…` : '…';
   }
 
-  function titleMetrics(style, layout, title, sub) {
+  function overlayOrigin(style, key, layout, blockW, blockH, fallback) {
+    const cfg = style[key] || {};
+    const k = layout.overlayK || layout.k;
+    const margin = 40 * k;
+    const pos = Style.overlayPosition(cfg.position, fallback);
+    const ox = Style.overlayOffset(cfg.offsetX) / 100 * layout.width;
+    const oy = Style.overlayOffset(cfg.offsetY) / 100 * layout.height;
+    let x = pos[1] === 'l' ? margin : pos[1] === 'c' ? (layout.width - blockW) / 2 : layout.width - margin - blockW;
+    let y = pos[0] === 't' ? margin : layout.height - margin - blockH;
+    x = clamp(x + ox, 0, Math.max(0, layout.width - blockW));
+    y = clamp(y + oy, 0, Math.max(0, layout.height - blockH));
+    return { x, y, margin, pos };
+  }
+
+  function titleMetrics(style, layout, title, sub, eyebrow) {
     const k = layout.overlayK || layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
     const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
@@ -471,20 +497,31 @@
     const subFont = `500 ${subSize}px ${FONT}`;
     const titleText = ellipsizeText(title, titleFont(titleSize), maxW);
     const subText = ellipsizeText(sub, subFont, maxW);
+    const eyebrowSize = 10.5 * k * ts;
+    const eyebrowFont = `700 ${eyebrowSize}px ${FONT}`;
+    const eyebrowText = eyebrow ? ellipsizeText(eyebrow.toUpperCase(), eyebrowFont, maxW) : '';
+    const eyebrowW = eyebrowText
+      ? measureText(eyebrowText, eyebrowFont) + eyebrowText.length * 1.5 * k
+      : 0;
     const eyebrowBaseline = 15 * k * ts;
     const titleBaseline = eyebrowBaseline + titleSize * 1.03;
     const subBaseline = titleBaseline + titleSize * 0.25 + subSize * 0.75 + 4 * k * ts;
     const accentH = Math.max(56 * k * ts, subBaseline + subSize * 0.25 - 4 * k * ts);
-    const measured = Math.max(measureText(titleText, titleFont(titleSize)), measureText(subText, subFont));
+    const measured = Math.max(
+      measureText(titleText, titleFont(titleSize)),
+      measureText(subText, subFont),
+      eyebrowW
+    );
     const scrimW = Math.min(layout.width * 0.94, Math.max(780 * k * ts, Math.min(measured, maxW) + 34 * k));
     const scrimH = Math.max(
       150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k,
       subBaseline + subSize * 0.35 + 8 * k
     );
+    const contentW = 16 * k + measured;
     return {
-      k, ts, titleScale, subScale, margin, maxW, titleSize, subSize,
+      k, ts, titleScale, subScale, margin, maxW, titleSize, subSize, eyebrowSize, eyebrowText,
       titleFont, subFont, titleText, subText,
-      eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH,
+      eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH, contentW,
     };
   }
 
@@ -493,21 +530,30 @@
     const opacity = clamp(Number(style.title.bgOpacity) || 0, 0, 1);
     if (opacity <= 0) return;
     const color = style.title.bgColor || bg || style.map.background;
-    const { title, sub } = titleContent(track, route, style);
-    const { scrimW, scrimH } = titleMetrics(style, layout, title, sub);
-    const g = ctx.createLinearGradient(0, 0, scrimW, 0);
+    const { title, sub, eyebrow } = titleContent(track, route, style);
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    const dx = origin.x - metrics.margin;
+    const dy = origin.y - metrics.margin;
+    ctx.save();
+    ctx.translate(dx, dy);
+    const g = ctx.createLinearGradient(0, 0, metrics.scrimW, 0);
     g.addColorStop(0, Style.withAlpha(color, opacity));
     g.addColorStop(0.62, Style.withAlpha(color, opacity * 0.55));
     g.addColorStop(1, Style.withAlpha(color, 0));
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, scrimW, scrimH);
+    ctx.fillRect(0, 0, metrics.scrimW, metrics.scrimH);
+    ctx.restore();
   }
 
   function drawTitle(ctx, track, route, style, layout) {
     if (!style.title.show) return;
     const { title, sub, eyebrow } = titleContent(track, route, style);
-    const metrics = titleMetrics(style, layout, title, sub);
-    const { k, ts } = metrics;
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
+    const { k } = metrics;
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    ctx.save();
+    ctx.translate(origin.x - metrics.margin, origin.y - metrics.margin);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     const x = metrics.margin;
@@ -517,9 +563,9 @@
 
     if (eyebrow) {
       ctx.fillStyle = Style.withAlpha(style.title.accent, 0.92);
-      ctx.font = `700 ${10.5 * k * ts}px ${FONT}`;
+      ctx.font = `700 ${metrics.eyebrowSize}px ${FONT}`;
       if ('letterSpacing' in ctx) ctx.letterSpacing = `${1.5 * k}px`;
-      ctx.fillText(eyebrow.toUpperCase(), x + 16 * k, y + metrics.eyebrowBaseline);
+      ctx.fillText(metrics.eyebrowText, x + 16 * k, y + metrics.eyebrowBaseline);
       if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     }
 
@@ -530,37 +576,21 @@
     ctx.fillStyle = Style.withAlpha(style.title.color, 0.7);
     ctx.font = metrics.subFont;
     ctx.fillText(metrics.subText, x + 16 * k, y + metrics.subBaseline);
-  }
-
-  function legendRows(track, style) {
-    const loop = track.closed;
-    const rows = [];
-    if (style.cp.visible === false) {
-      rows.push([I18n.t('label.route'), style.route.color]);
-      return rows;
-    }
-    if (loop) {
-      rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
-      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-    } else {
-      rows.push([I18n.t('cp.start'), style.cp.startColor]);
-      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-      rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
-    }
-    return rows;
+    ctx.restore();
   }
 
   function drawLegend(ctx, track, route, style, layout) {
     if (!style.legend.show) return;
     const k = layout.overlayK || layout.k;
-    const margin = 40 * k;
-    const rows = legendRows(track, style);
+    const legend = Style.cpLegend(track, style, I18n.t);
+    const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
     const width = 172 * k;
     const height = pad * 2 + rows.length * rowH + 18 * k;
-    const x = margin;
-    const y = layout.height - margin - height;
+    const origin = overlayOrigin(style, 'legend', layout, width, height, 'bl');
+    const x = origin.x;
+    const y = origin.y;
 
     ctx.save();
     ctx.fillStyle = style.legend.background;
@@ -588,7 +618,7 @@
 
     ctx.fillStyle = Style.withAlpha(style.legend.color, 0.6);
     ctx.font = `500 ${10 * k}px ${FONT}`;
-    ctx.fillText(`${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
+    ctx.fillText(`${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
     ctx.restore();
   }
 
@@ -704,8 +734,8 @@
     if (!style.map.grid) return '';
     const k = layout.k;
     const view = layout.view;
-    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
-    const step = Style.gridStep(gridBounds);
+    const gridReference = map && map.bounds ? map.bounds : view;
+    const step = Style.gridStep(gridReference);
     let d = '';
     for (let x = Math.ceil(view.minX / step) * step; x <= view.maxX; x += step) {
       const px = r2(layout.xToPx(x));
@@ -726,7 +756,17 @@
         close = ' clip-path="url(#gridClip)"';
       }
     }
-    return `${clip}<path d="${d.trim()}" fill="none" stroke="${Style.withAlpha(style.map.gridColor, style.map.gridOpacity)}" stroke-width="${r2(Math.max(0.5, k * 0.85))}"${close}/>`;
+    let labels = '';
+    if (style.map.gridNumbers) {
+      const alpha = Style.gridNumberAlpha(style.map);
+      const parts = [];
+      for (const cell of Style.gridCells(gridReference, step)) {
+        if (cell.x < view.minX || cell.x > view.maxX || cell.y < view.minY || cell.y > view.maxY) continue;
+        parts.push(`<text x="${r2(layout.xToPx(cell.x))}" y="${r2(layout.yToPx(cell.y))}" text-anchor="middle" dominant-baseline="central" fill="${style.map.gridColor}" fill-opacity="${r2(alpha)}" font-family="${FONT_SVG}" font-size="${r2(Math.max(8, 9 * k))}" font-weight="600">${cell.index}</text>`);
+      }
+      if (parts.length) labels = `<g${close}>${parts.join('')}</g>`;
+    }
+    return `${clip}<path d="${d.trim()}" fill="none" stroke="${Style.withAlpha(style.map.gridColor, style.map.gridOpacity)}" stroke-width="${r2(Math.max(0.5, k * 0.85))}"${close}/>${labels}`;
   }
 
   function routeSvg(route, style, layout) {
@@ -764,7 +804,8 @@
     if (!arrows.length) return '';
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
-    const cps = (style.cp.visible === false ? [] : (track.checkpoints || [])).map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
+    const cps = Style.visibleCheckpoints(track, style)
+      .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const outline = style.route.arrowOutline && style.route.arrowOutline !== 'transparent'
       ? ` stroke="${style.route.arrowOutline}" stroke-width="${r2(Math.max(0.5, layout.k * 0.9))}"`
       : '';
@@ -782,7 +823,6 @@
   }
 
   function markersSvg(track, style, layout) {
-    if (style.cp.visible === false) return '';
     const s = style.cp;
     const size = s.size * layout.k;
     const r = size / 2;
@@ -792,10 +832,11 @@
     const cps = track.checkpoints || [];
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
+      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
       const x = layout.xToPx(cp.x), y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
-      const label = Style.markerLabel(cp, i);
+      const label = Style.markerLabel(cp, i, style);
       const parts = [];
       if (s.halo) {
         parts.push(`<circle r="${r2(r + 7 * layout.k)}" fill="${s.haloColor}" opacity="${s.haloOpacity}"/>`);
@@ -813,7 +854,7 @@
         parts.push(`<text x="0" y="${r2(fontSize * 0.02)}" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-family="${FONT_SVG}" font-size="${r2(fontSize)}" font-weight="700">${Style.escapeXml(label)}</text>`);
       }
       if (s.showLabels) {
-        const labelText = cp.label || I18n.roleLabel(cp, i);
+        const labelText = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i));
         const fs = Math.max(8, 11.5 * layout.k);
         parts.push(`<text x="0" y="${r2(r + 7 * layout.k)}" text-anchor="middle" dominant-baseline="hanging" fill="${s.labelColor}" font-family="${FONT_SVG}" font-size="${r2(fs)}" font-weight="600" stroke="rgba(0,0,0,0.55)" stroke-width="${r2(3 * layout.k)}" paint-order="stroke">${Style.escapeXml(labelText)}</text>`);
       }
@@ -825,8 +866,11 @@
   function titleSvg(track, route, style, layout, bg) {
     if (!style.title.show) return null;
     const { title, sub, eyebrow } = titleContent(track, route, style);
-    const metrics = titleMetrics(style, layout, title, sub);
-    const { k, ts } = metrics;
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
+    const { k } = metrics;
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    const dx = origin.x - metrics.margin;
+    const dy = origin.y - metrics.margin;
     const parts = [];
     let defs = '';
     let scrim = '';
@@ -838,28 +882,29 @@
         `<stop offset="0.62" stop-color="${scrimColor}" stop-opacity="${r2(scrimOpacity * 0.55)}"/>` +
         `<stop offset="1" stop-color="${scrimColor}" stop-opacity="0"/>` +
         `</linearGradient>`;
-      scrim = `<rect x="0" y="0" width="${r2(metrics.scrimW)}" height="${r2(metrics.scrimH)}" fill="url(#titleScrim)"/>`;
+      scrim = `<g transform="translate(${r2(dx)} ${r2(dy)})"><rect x="0" y="0" width="${r2(metrics.scrimW)}" height="${r2(metrics.scrimH)}" fill="url(#titleScrim)"/></g>`;
     }
     const x = metrics.margin, y = metrics.margin;
     parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(metrics.accentH)}" fill="${style.title.accent}"/>`);
     if (eyebrow) {
-      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.eyebrowBaseline)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
+      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.eyebrowBaseline)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(metrics.eyebrowSize)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(metrics.eyebrowText)}</text>`);
     }
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.titleBaseline)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(metrics.titleSize)}" font-weight="700">${Style.escapeXml(metrics.titleText)}</text>`);
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.subBaseline)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(metrics.subSize)}" font-weight="500">${Style.escapeXml(metrics.subText)}</text>`);
-    return { defs, scrim, body: parts.join('') };
+    return { defs, scrim, body: `<g transform="translate(${r2(dx)} ${r2(dy)})">${parts.join('')}</g>` };
   }
 
   function legendSvg(track, route, style, layout) {
     if (!style.legend.show) return '';
     const k = layout.overlayK || layout.k;
-    const margin = 40 * k;
-    const rows = legendRows(track, style);
+    const legend = Style.cpLegend(track, style, I18n.t);
+    const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
     const w = 172 * k;
     const h = pad * 2 + rows.length * rowH + 18 * k;
-    const x = margin, y = layout.height - margin - h;
+    const origin = overlayOrigin(style, 'legend', layout, w, h, 'bl');
+    const x = origin.x, y = origin.y;
     const parts = [];
     parts.push(`<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" rx="${r2(10 * k)}" fill="${style.legend.background}" stroke="${Style.withAlpha(style.legend.color, 0.12)}" stroke-width="${r2(Math.max(0.5, k))}"/>`);
     rows.forEach(([label, color], i) => {
@@ -867,7 +912,7 @@
       parts.push(`<circle cx="${r2(x + pad + 4 * k)}" cy="${r2(cy)}" r="${r2(4.5 * k)}" fill="${color}" stroke="${Style.withAlpha(style.legend.color, 0.35)}" stroke-width="${r2(Math.max(0.4, 0.8 * k))}"/>`);
       parts.push(`<text x="${r2(x + pad + 16 * k)}" y="${r2(cy)}" dominant-baseline="central" fill="${style.legend.color}" font-family="${FONT_SVG}" font-size="${r2(12 * k)}" font-weight="500">${Style.escapeXml(label)}</text>`);
     });
-    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
+    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
     return parts.join('');
   }
 
@@ -882,7 +927,7 @@
     const bg = resolveBackground(opts, style);
     const defs = [];
     const body = [];
-    if (style.cp.visible !== false && track && track.checkpoints && track.checkpoints.length) {
+    if (track && Style.visibleCheckpoints(track, style).length) {
       defs.push(
         `<filter id="cpShadow" x="-50%" y="-50%" width="200%" height="200%">` +
         `<feDropShadow dx="0" dy="${r2(2 * layout.k)}" stdDeviation="${r2(3.5 * layout.k)}" flood-color="#000000" flood-opacity="0.35"/>` +

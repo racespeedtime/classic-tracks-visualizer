@@ -16,8 +16,10 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Automatic road routing**: the default **Auto** mode prefers a full A* route over SA vehicle nodes. If some CPs cannot snap, it still keeps as much of the road network as possible, fills gaps with straight lines, and explains this under **Route**. You can also force **Road / Spline / Straight**.
 - **Closed loops**: when **Closed loop** is enabled, the last point returns to the start and the first point becomes both start and finish.
 - **CP editing**: drag on the map, edit coordinates, move up/down, delete, or add CPs by clicking the map. Show or hide checkpoints in both the map and the export; the sidebar list is collapsible and virtualized for tracks with hundreds of CPs.
+- **CP display filters**: show all markers, start + finish only, start only, finish only, or **CP style** (all points, including start / finish, rendered as ordinary checkpoints without S/F colours or badges). Marker density thinning (every 2nd / 5th / 10th / 20th) is independent. Display thinning never changes routing or CP indices, and the sidebar editing list always keeps every checkpoint.
 - **Large warning sets**: the notes/warnings panel is collapsible too, and both warning lists virtualize their rows so large tracks stay responsive.
-- **Visual customization**: 6 theme presets; solid / along-route / linear / elevation route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / blur / tint / grid; title and legend.
+- **Visual customization**: 9 theme presets; solid / along-route / linear / elevation / rainbow route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / invert / blur / tint / grid; title and legend.
+- **Custom theme state**: any visual override switches the active theme to **Custom** while remembering the base preset. Changing it back exactly restores the preset automatically; **Restore preset** resets visuals to that base without losing title text, visibility toggles, or a custom base map.
 - **PNG export**: 16:9, 4:3, 1:1, 9:16, 4K, transparent background, and **full track / current view** framing.
 - **SVG export**: route, CPs, title and legend stay vector; the base map is embedded as a raster image, or turn it off for a pure-vector route map.
 - **Custom base maps**: upload an image and set its coordinate bounds for other games or hand-made maps.
@@ -31,7 +33,15 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Route playback**: play a direction arrow from start to finish with a 0.1×–4× speed slider (click the `×` value to type an exact speed); a floating HUD shows playing/paused/finished status and stop controls. Optional map following keeps the arrow centered (dragging or zooming turns it off). The animation is map-preview only and never appears in exports.
 - **Collapsible route notes**: route warnings can be folded away and use the same virtualized list rendering for long runs.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
+- **Responsive workspace**: below 980px the sidebar becomes a bottom sheet with peek / half / full snap points. Drag the handle, tap it, use the chevron, or use `↑` / `↓` / `Home` / `End` while the handle is focused. On desktop the sidebar can be collapsed from the top bar.
+- **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, fit, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
+- **Movable help dialogs**: drag the title bar of the JSON-format or keyboard-shortcut dialogs to reposition them. Positions are clamped to the viewport, reset when reopened, and double-clicking the title bar recenters.
+- **Small-screen controls**: below 480px the section tabs show icons only. Checkpoint, track-note and route-note headers are full-width collapse toggles, not just the chevron.
+- **Toast feedback**: Ant-Design-style elevated notices with success/error/info icons, soft shadows, top-center stacking and slide-fade motion.
+- **Title / legend placement**: independently anchor both overlays to any of six positions (top/middle/bottom × left/center/right), then fine-tune horizontal and vertical offsets as percentages of the canvas. The same placement is used by the live map, PNG, SVG, mini preview and fullscreen preview.
+- **Live export preview**: the thumbnail in the Export pane re-renders after style, route, or size changes and shows a loading spinner while the next frame is being prepared.
 - **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
+- **Fullscreen preview**: click the preview image to open a full-viewport lightbox with wheel/trackpad zoom, pinch zoom on touch screens, drag-to-pan, double-click reset, and an optional native Fullscreen API button. Keyboard: `+`/`-` zoom, arrows pan, `0` reset, `Esc` close.
 - **Source link**: the sidebar footer GitHub icon opens the source repository.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
@@ -156,15 +166,16 @@ Limitation: a custom base map only changes the display, not the coordinate syste
 
 ## Visual Styling
 
-- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono.
+- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono, Cyberpunk 2077, White Chocolate, Rainbow Flow.
 - **Route gradients**:
   - Solid
   - Along route: start color → finish color over route length
   - Linear: gradient in canvas direction
   - Elevation: gradient by CP / route `z`
+  - Rainbow: continuous full-spectrum light trail, Tesla style
 - **Route layer**: outline, glow, dashes, direction arrows (spacing / size / color).
-- **Checkpoints**: show / hide, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
-- **Base map**: brightness, contrast, saturation, hue, blur, tint strength, grid, background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
+- **Checkpoints**: show / hide, display range, marker density, CP-style endpoints, uniform start/finish colours, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
+- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid (8 × 8 on the standard SA bounds), optional grid numbers (0 at the top-left, row-major), background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
 - **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, overall scale, title font size, subtitle font size, legend background.
 
 Can visual styles be saved to JSON? Currently they are autosaved in `localStorage` only; **Save JSON** contains track data, not visual styles.
@@ -191,7 +202,6 @@ Can visual styles be saved to JSON? Currently they are autosaved in `localStorag
 | `Ctrl/Cmd + Z` | Undo last checkpoint edit |
 | `Ctrl/Cmd + Shift + Z` | Redo checkpoint edit |
 | `+` / `=` | Enter / leave map add-CP mode |
-| `A` | Add a checkpoint at the map center |
 | `Esc` | Cancel add mode / clear selection / close dialog |
 | `Delete` | Delete the selected checkpoint |
 | `Ctrl/Cmd + O` | Open JSON |

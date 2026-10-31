@@ -6,6 +6,7 @@
 
   const DEFAULT_VISUAL = {
     theme: 'neon',
+    baseTheme: 'neon',
     route: {
       paint: 'along',        // solid | along | linear | elevation
       color: '#ff2d75',
@@ -28,6 +29,9 @@
     },
     cp: {
       visible: true,
+      filter: 'all',          // all | endpoints | start | finish
+      interval: 1,            // 1 = every CP; 2 / 5 / 10 / 20 = marker thinning
+      distinguish: true,
       shape: 'circle',       // circle | square | diamond
       size: 22,
       fill: '#070b14',
@@ -52,11 +56,13 @@
       saturate: 0.5,
       hue: 0,
       blur: 0,
+      invert: 0,
       tint: '#0b1b3a',
       tintOpacity: 0.22,
       grid: false,
       gridColor: '#ffffff',
       gridOpacity: 0.08,
+      gridNumbers: false,
       background: '#050811',
     },
     title: {
@@ -71,12 +77,18 @@
       size: 1,
       titleSize: 1,
       subSize: 1,
+      position: 'tl',
+      offsetX: 0,
+      offsetY: 0,
     },
     legend: {
       show: true,
       color: '#dbe7f5',
       background: 'rgba(5,8,17,0.76)',
       accent: '#ffffff',
+      position: 'bl',
+      offsetX: 0,
+      offsetY: 0,
     },
   };
 
@@ -153,6 +165,39 @@
         legend: { color: '#ffffff', background: 'rgba(5,5,5,0.85)' },
       },
     },
+    {
+      key: 'cyberpunk', name: '赛博朋克 2077', en: 'Cyberpunk 2077',
+      note: '夜之城黄青霓虹，硬朗菱形 CP', noteEn: 'Night City yellow/cyan neon, angular CPs', swatch: ['#fcee0a', '#00f0ff', '#0a0a0a'],
+      patch: {
+        route: { paint: 'linear', color: '#fcee0a', color2: '#00f0ff', angle: 135, width: 4, outline: true, outlineColor: '#050505', outlineWidth: 2.5, glow: true, glowColor: '#fcee0a', glowSize: 18, arrows: true, arrowColor: '#00f0ff', arrowOutline: 'rgba(5,5,5,0.8)', arrowGap: 240 },
+        cp: { shape: 'diamond', size: 21, fill: '#0a0a0a', border: '#fcee0a', borderWidth: 2, textColor: '#fcee0a', startColor: '#fcee0a', finishColor: '#ff2a6d', halo: true, haloColor: '#00f0ff', haloOpacity: 0.2 },
+        map: { brightness: 0.46, contrast: 1.28, saturate: 0.8, hue: -8, tint: '#03151a', tintOpacity: 0.35, grid: true, gridColor: '#00f0ff', gridOpacity: 0.08, background: '#05070a' },
+        title: { accent: '#fcee0a', eyebrow: 'NIGHT CITY', color: '#fcee0a', bgColor: '#05070a', bgOpacity: 0.68 },
+        legend: { color: '#d8fbff', background: 'rgba(5,7,10,0.86)' },
+      },
+    },
+    {
+      key: 'inverted', name: '白巧地图', en: 'White Chocolate',
+      note: '奶油白底图，黑色路线，柔和低对比', noteEn: 'Cream-white base map, black route, soft low contrast', swatch: ['#1a1712', '#f6f1e6', '#ffffff'],
+      patch: {
+        route: { paint: 'solid', color: '#050505', color2: '#050505', width: 4.5, outline: true, outlineColor: '#ffffff', outlineWidth: 2.5, glow: false, glowColor: '#ffffff', glowSize: 0, arrows: true, arrowColor: '#050505', arrowOutline: 'rgba(255,255,255,0.8)', arrowGap: 260 },
+        cp: { shape: 'circle', size: 21, fill: '#fffdf8', border: '#1a1712', borderWidth: 2.5, textColor: '#1a1712', startColor: '#1a1712', finishColor: '#1a1712', halo: false },
+        map: { invert: 1, brightness: 1.85, contrast: 0.45, saturate: 0, hue: 0, opacity: 0.45, tint: '#f4ead8', tintOpacity: 0.12, grid: true, gridColor: '#3a3126', gridOpacity: 0.06, background: '#f6f1e6' },
+        title: { accent: '#1a1712', eyebrow: 'WHITE CHOC', color: '#1a1712', bgColor: '#fbf7ee', bgOpacity: 0.78 },
+        legend: { color: '#1a1712', background: 'rgba(251,247,238,0.92)' },
+      },
+    },
+    {
+      key: 'rainbow', name: '彩虹光轨', en: 'Rainbow Flow',
+      note: '特斯拉式连续光谱光轨，深色夜空', noteEn: 'Tesla-style full-spectrum route on a dark sky', swatch: ['#ff3b30', '#ffd60a', '#34c759'],
+      patch: {
+        route: { paint: 'rainbow', color: '#ff3b30', color2: '#a855f7', width: 4.5, outline: true, outlineColor: '#05060a', outlineWidth: 2.5, glow: true, glowColor: '#ffffff', glowSize: 12, arrows: true, arrowColor: '#ffffff', arrowOutline: 'rgba(0,0,0,0.7)', arrowGap: 240 },
+        cp: { shape: 'circle', size: 21, fill: '#05060a', border: '#ffffff', borderWidth: 2, textColor: '#ffffff', startColor: '#34c759', finishColor: '#ff3b30', halo: true, haloColor: '#ffffff', haloOpacity: 0.16 },
+        map: { brightness: 0.5, contrast: 1.12, saturate: 0.6, hue: 0, tint: '#07111f', tintOpacity: 0.28, grid: true, gridColor: '#ffffff', gridOpacity: 0.05, background: '#05070c' },
+        title: { accent: '#ffd60a', eyebrow: 'RAINBOW RUN', color: '#ffffff', bgColor: '#05070c', bgOpacity: 0.62 },
+        legend: { color: '#f4f8ff', background: 'rgba(5,7,12,0.84)' },
+      },
+    },
   ];
 
   const EXPORT_PRESETS = [
@@ -183,17 +228,169 @@
   function defaultVisual() { return clone(DEFAULT_VISUAL); }
   function defaultExport() { return clone(DEFAULT_EXPORT); }
 
+  const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
+  const CP_FILTERS = ['all', 'endpoints', 'start', 'finish', 'checkpoints'];
+  const CP_INTERVALS = [1, 2, 5, 10, 20];
+
+  function overlayPosition(value, fallback) {
+    return OVERLAY_POSITIONS.includes(value) ? value : fallback;
+  }
+
+  function overlayOffset(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(-50, Math.min(50, n)) : 0;
+  }
+
+  function cpFilter(style) {
+    const value = style && style.cp ? style.cp.filter : 'all';
+    return CP_FILTERS.includes(value) ? value : 'all';
+  }
+
+  function cpInterval(style) {
+    const value = Number(style && style.cp ? style.cp.interval : 1);
+    return CP_INTERVALS.includes(value) ? value : 1;
+  }
+
+  function cpVisible(cp, style) {
+    if (!cp || !style || style.cp.visible === false) return false;
+    const filter = cpFilter(style);
+    if (filter === 'all' || filter === 'checkpoints') return true;
+    const endpoint = cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop';
+    if (filter === 'endpoints') return endpoint;
+    if (filter === 'start') return cp.role === 'start' || cp.role === 'loop';
+    return cp.role === 'finish' || cp.role === 'loop';
+  }
+
+  // Marker thinning is a render-only concern. `index` is always the original
+  // checkpoint index, so labels, editing and routing never get renumbered.
+  function cpVisibleAt(cp, index, track, style) {
+    if (!cpVisible(cp, style)) return false;
+    const interval = cpInterval(style);
+    if (interval <= 1) return true;
+    if (cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop') return true;
+    return Number.isInteger(index) && index > 0 && index % interval === 0;
+  }
+
+  function visibleCheckpoints(track, style) {
+    return track ? track.checkpoints.filter((cp, index) => cpVisibleAt(cp, index, track, style)) : [];
+  }
+
+  function cpLegend(track, style, t) {
+    const legend = buildCpLegend(track, style, t);
+    legend.total = track && Array.isArray(track.checkpoints) ? track.checkpoints.length : 0;
+    return legend;
+  }
+
+  function buildCpLegend(track, style, t) {
+    const routeRow = [t('label.route'), style.route.color];
+    if (!track) return { rows: [routeRow], count: 0 };
+    const visible = visibleCheckpoints(track, style);
+    if (!visible.length) return { rows: [routeRow], count: 0 };
+    const filter = cpFilter(style);
+    if (filter === 'checkpoints') {
+      return { rows: [[t('field.checkpoints'), style.cp.border]], count: visible.length };
+    }
+    if (style.cp.distinguish === false) {
+      let label = t('field.checkpoints');
+      if (track.closed && filter !== 'all') label = t('label.startFinish');
+      else if (filter === 'start') label = t('cp.start');
+      else if (filter === 'finish') label = t('cp.finish');
+      else if (filter === 'endpoints') label = t('label.endpoints');
+      return { rows: [[label, style.cp.border]], count: visible.length };
+    }
+    if (filter === 'start') {
+      return {
+        rows: [track.closed
+          ? [t('label.startFinish'), style.cp.startColor]
+          : [t('cp.start'), style.cp.startColor]],
+        count: visible.length,
+      };
+    }
+    if (filter === 'finish') {
+      return {
+        rows: [track.closed
+          ? [t('label.startFinish'), style.cp.startColor]
+          : [t('cp.finish'), style.cp.finishColor]],
+        count: visible.length,
+      };
+    }
+    if (filter === 'endpoints') {
+      return {
+        rows: track.closed
+          ? [[t('label.startFinish'), style.cp.startColor]]
+          : [[t('cp.start'), style.cp.startColor], [t('cp.finish'), style.cp.finishColor]],
+        count: visible.length,
+      };
+    }
+    if (track.closed) {
+      return {
+        rows: [
+          [t('label.startFinish'), style.cp.startColor],
+          [t('field.checkpoints'), style.cp.border],
+        ],
+        count: visible.length,
+      };
+    }
+    const rows = [[t('cp.start'), style.cp.startColor]];
+    if (track.checkpoints.length > 2) rows.push([t('field.checkpoints'), style.cp.border]);
+    rows.push([t('cp.finish'), style.cp.finishColor]);
+    return { rows, count: visible.length };
+  }
+
   function applyTheme(key) {
     const theme = THEMES.find((t) => t.key === key);
     if (!theme) return defaultVisual();
-    return deepMerge(defaultVisual(), theme.patch);
+    const next = deepMerge(defaultVisual(), theme.patch);
+    next.theme = key;
+    next.baseTheme = key;
+    return next;
   }
 
-  // Fill a theme patch into an existing style without dropping export prefs.
-  function themeStyle(key, current) {
-    const next = applyTheme(key);
-    next.theme = key;
-    return next;
+  // Theme comparison intentionally ignores content, map source and visibility
+  // toggles: editing a track title should not mean "custom theme".
+  const THEME_IGNORED_PATHS = [
+    'theme',
+    'baseTheme',
+    'title.text',
+    'title.sub',
+    'title.show',
+    'legend.show',
+    'map.source',
+    'map.visible',
+    'cp.visible',
+    'cp.filter',
+    'cp.distinguish',
+    'cp.interval',
+  ];
+
+  function deletePath(obj, path) {
+    const parts = path.split('.');
+    let node = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!node || typeof node !== 'object') return;
+      node = node[parts[i]];
+    }
+    if (node && typeof node === 'object') delete node[parts[parts.length - 1]];
+  }
+
+  function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (!value || typeof value !== 'object') return value;
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = stableValue(value[key]);
+    return out;
+  }
+
+  function comparableThemeStyle(style) {
+    const out = clone(style);
+    for (const path of THEME_IGNORED_PATHS) deletePath(out, path);
+    return stableValue(out);
+  }
+
+  function sameTheme(style, baseTheme) {
+    const base = THEMES.some((t) => t.key === baseTheme) ? baseTheme : 'neon';
+    return JSON.stringify(comparableThemeStyle(style)) ===
+      JSON.stringify(comparableThemeStyle(applyTheme(base)));
   }
 
   // ── Colour helpers ─────────────────────────────────────────────────────
@@ -254,14 +451,23 @@
   }
 
   function routeColor(t, style) {
+    if (style.route.paint === 'rainbow') {
+      const hue = ((clampNumber(t, 0, 1) * 360) + 8) % 360;
+      return `hsl(${hue.toFixed(1)}, 92%, 60%)`;
+    }
     return mixColor(style.route.color, style.route.color2, t);
+  }
+
+  function clampNumber(value, min, max) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
   }
 
   // Split the route into contiguous colour runs. Used by both the Leaflet map
   // and the exporter so every paint mode matches in the final image.
   function routeRuns(points, zRange, style) {
     const requested = style.route.paint;
-    const mode = ['solid', 'along', 'linear', 'elevation'].includes(requested) ? requested : 'solid';
+    const mode = ['solid', 'along', 'linear', 'elevation', 'rainbow'].includes(requested) ? requested : 'solid';
     if (!points || points.length < 2) return [];
     if (mode === 'solid') return [{ color: style.route.color, points: points.slice() }];
 
@@ -295,7 +501,7 @@
       const seg = Math.hypot(b.x - a.x, b.y - a.y);
       if (seg < 1e-6) continue;
       let t;
-      if (mode === 'along') {
+      if (mode === 'along' || mode === 'rainbow') {
         t = total > 0 ? (cum[i - 1] + seg * 0.5) / total : 0;
       } else if (mode === 'elevation') {
         t = (((a.z || 0) + (b.z || 0)) * 0.5 - zLo) / zSpan;
@@ -316,6 +522,7 @@
 
   function cssFilter(mapStyle, blurScale = 1) {
     const parts = [];
+    if (Number(mapStyle.invert) > 0.001) parts.push(`invert(${Math.min(1, Math.max(0, Number(mapStyle.invert)))})`);
     if (mapStyle.brightness !== 1) parts.push(`brightness(${mapStyle.brightness})`);
     if (mapStyle.contrast !== 1) parts.push(`contrast(${mapStyle.contrast})`);
     if (mapStyle.saturate !== 1) parts.push(`saturate(${mapStyle.saturate})`);
@@ -328,13 +535,43 @@
   function gridStep(view) {
     const spanX = Math.max(0, Number(view && view.maxX) - Number(view && view.minX));
     const spanY = Math.max(0, Number(view && view.maxY) - Number(view && view.minY));
-    let step = 500;
+    let step = 750;
     let guard = 0;
     while (spanX / step + spanY / step > 2400 && guard++ < 32) step *= 2;
     return step;
   }
 
-  function markerLabel(cp, index) {
+  // Stable, row-major grid-cell numbers starting at 0 (top-left to bottom-right).
+  function gridCells(bounds, step) {
+    if (!bounds || !Number.isFinite(step) || step <= 0) return [];
+    const minX = Number(bounds.minX), maxX = Number(bounds.maxX);
+    const minY = Number(bounds.minY), maxY = Number(bounds.maxY);
+    if (![minX, maxX, minY, maxY].every(Number.isFinite) || maxX <= minX || maxY <= minY) return [];
+    const x0 = Math.ceil(minX / step) * step;
+    const x1 = Math.floor(maxX / step) * step;
+    const y0 = Math.ceil(minY / step) * step;
+    const y1 = Math.floor(maxY / step) * step;
+    const cols = Math.max(0, Math.round((x1 - x0) / step));
+    const rows = Math.max(0, Math.round((y1 - y0) / step));
+    const cells = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = x0 + (col + 0.5) * step;
+        const y = y1 - (row + 0.5) * step;
+        if (x < minX || x > maxX || y < minY || y > maxY) continue;
+        cells.push({ x, y });
+      }
+    }
+    return cells.map((cell, index) => ({ ...cell, index }));
+  }
+
+  function gridNumberAlpha(mapStyle) {
+    const value = Number(mapStyle && mapStyle.gridOpacity) || 0;
+    return Math.min(0.8, Math.max(0.34, value * 4 + 0.2));
+  }
+
+  function markerLabel(cp, index, style) {
+    if (style && cpFilter(style) === 'checkpoints') return String(index);
     if (cp.role === 'start') return 'S';
     if (cp.role === 'finish') return 'F';
     if (cp.role === 'loop') return 'S/F';
@@ -342,12 +579,14 @@
   }
 
   function markerFill(cp, style) {
+    if (style.cp.distinguish === false || cpFilter(style) === 'checkpoints') return style.cp.fill;
     if (cp.role === 'start' || cp.role === 'loop') return style.cp.startColor;
     if (cp.role === 'finish') return style.cp.finishColor;
     return style.cp.fill;
   }
 
   function markerTextColor(cp, style) {
+    if (style.cp.distinguish === false || cpFilter(style) === 'checkpoints') return style.cp.textColor;
     if (cp.role === 'start' || cp.role === 'loop' || cp.role === 'finish') {
       return contrastText(markerFill(cp, style), '#ffffff', '#08110b');
     }
@@ -366,7 +605,7 @@
     const c = total / 2;
     const fill = markerFill(cp, style);
     const textColor = markerTextColor(cp, style);
-    const label = markerLabel(cp, index);
+    const label = markerLabel(cp, index, style);
     const fontSize = label.length > 1 ? size * 0.34 : size * 0.46;
 
     const shape = (extra = '') => {
@@ -403,9 +642,15 @@
 
   root.Style = {
     DEFAULT_VISUAL, DEFAULT_EXPORT, THEMES, EXPORT_PRESETS,
-    clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
+    clone, deepMerge, defaultVisual, defaultExport, applyTheme,
+    sameTheme,
+    OVERLAY_POSITIONS, overlayPosition, overlayOffset,
+    CP_FILTERS, cpFilter, cpVisible,
+    CP_INTERVALS, cpInterval, cpVisibleAt,
+    visibleCheckpoints, cpLegend,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,
+    gridCells, gridNumberAlpha,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

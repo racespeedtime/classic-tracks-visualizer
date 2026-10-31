@@ -19,6 +19,7 @@
   let gridRenderer = null;
   let routeRenderer = null;
   let gridGroup = null;
+  let gridLabelGroup = null;
   let routeGroup = null;
   let arrowGroup = null;
   let cpGroup = null;
@@ -77,8 +78,9 @@
 
     map.createPane('tintPane').style.zIndex = 410;
     map.createPane('gridPane').style.zIndex = 420;
+    map.createPane('gridLabelPane').style.zIndex = 425;
     map.createPane('routePane').style.zIndex = 430;
-    for (const name of ['tintPane', 'gridPane', 'routePane']) {
+    for (const name of ['tintPane', 'gridPane', 'gridLabelPane', 'routePane']) {
       map.getPane(name).style.pointerEvents = 'none';
     }
 
@@ -96,6 +98,7 @@
     }).addTo(map);
 
     gridGroup = L.layerGroup().addTo(map);
+    gridLabelGroup = L.layerGroup().addTo(map);
     routeGroup = L.layerGroup().addTo(map);
     arrowGroup = L.layerGroup().addTo(map);
     cpGroup = L.layerGroup().addTo(map);
@@ -105,8 +108,8 @@
       options: { position: 'bottomright', width: 100 },
       onAdd(leafletMap) {
         this._map = leafletMap;
-        const container = L.DomUtil.create('div', 'leaflet-control-scale leaflet-control');
-        this._line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
+        const container = L.DomUtil.create('div', 'leaflet-control tl-scale');
+        this._line = L.DomUtil.create('div', 'tl-scale-line', container);
         leafletMap.on('zoomend moveend resize', this._update, this);
         this._update();
         return container;
@@ -229,6 +232,7 @@
   function rebuildGrid() {
     if (!gridGroup || !state.style) return;
     gridGroup.clearLayers();
+    if (gridLabelGroup) gridLabelGroup.clearLayers();
     const ms = state.style.map;
     if (!ms.grid) return;
     const b = baseBounds;
@@ -252,6 +256,23 @@
         opacity,
         interactive: false,
       }));
+    }
+    if (ms.gridNumbers && gridLabelGroup) {
+      const alpha = Style.gridNumberAlpha(ms);
+      for (const cell of Style.gridCells(b, step)) {
+        const icon = L.divIcon({
+          className: 'tl-grid-num',
+          html: `<span style="color:${color};opacity:${alpha}">${cell.index}</span>`,
+          iconSize: [38, 16],
+          iconAnchor: [19, 8],
+        });
+        gridLabelGroup.addLayer(L.marker([cell.y, cell.x], {
+          icon,
+          interactive: false,
+          keyboard: false,
+          pane: 'gridLabelPane',
+        }));
+      }
     }
   }
 
@@ -329,7 +350,7 @@
     if (!route || !route.points || route.points.length < 2 || !r.arrows) return;
     const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
     const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-    const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : []))
+    const cps = Style.visibleCheckpoints(state.track, style)
       .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
     const safe = Math.max(12, style.cp.size * 1.15);
     for (const arrow of arrows) {
@@ -366,7 +387,7 @@
   }
 
   function cpMarkerHtml(cp, index, style) {
-    const label = cp.label || I18n.roleLabel(cp, index);
+    const label = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${index}` : I18n.roleLabel(cp, index));
     const labelHtml = style.cp.showLabels
       ? `<span class="tl-cp-label" style="color:${style.cp.labelColor}">${escapeHtml(label)}</span>`
       : '';
@@ -377,10 +398,12 @@
     if (!cpGroup || !state.style) return;
     cpGroup.clearLayers();
     const track = state.track;
-    if (!track || state.style.cp.visible === false) return;
+    if (!track) return;
     const style = state.style;
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
+      if (!Style.cpVisible(cp, style)) return;
+      if (!Style.cpVisibleAt(cp, i, track, style) && i !== state.selected) return;
       const icon = L.divIcon({
         className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
@@ -423,7 +446,7 @@
         if (handlers.onCpDragEnd) handlers.onCpDragEnd(i, ll.lng, ll.lat);
       });
 
-      const role = I18n.roleLabel(cp, i);
+      const role = Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i);
       const routeCp = state.route && state.route.cps ? state.route.cps[i] : null;
       const label = cp.label ? `${role} · ${escapeHtml(cp.label)}` : role;
       marker.bindTooltip(
@@ -436,7 +459,23 @@
     });
   }
 
-  function setSelected(index) {    state.selected = Number.isInteger(index) ? index : -1;
+  function setSelected(index) {
+    const previous = state.selected;
+    const next = Number.isInteger(index) ? index : -1;
+    const track = state.track;
+    const style = state.style;
+    const isDensityExtra = (i) => {
+      if (i < 0 || !track || !style || !track.checkpoints[i]) return false;
+      const cp = track.checkpoints[i];
+      return Style.cpVisible(cp, style) && !Style.cpVisibleAt(cp, i, track, style);
+    };
+    state.selected = next;
+    // A selected checkpoint is exposed even when density thinned its marker.
+    // Export rendering stays pure, so selection never leaks into the output.
+    if (isDensityExtra(previous) || isDensityExtra(next)) {
+      rebuildMarkers();
+      return;
+    }
     if (!cpGroup) return;
     cpGroup.eachLayer((marker) => {
       const el = marker.getElement();
@@ -480,6 +519,9 @@
         titleEl.style.setProperty('--mt-scale', String(style.title.size || 1));
         titleEl.style.setProperty('--mt-title-scale', String(style.title.titleSize || 1));
         titleEl.style.setProperty('--mt-sub-scale', String(style.title.subSize || 1));
+        titleEl.dataset.pos = Style.overlayPosition(style.title.position, 'tl');
+        titleEl.style.setProperty('--pos-x', `${Style.overlayOffset(style.title.offsetX)}%`);
+        titleEl.style.setProperty('--pos-y', `${Style.overlayOffset(style.title.offsetY)}%`);
         titleEl.classList.toggle('is-light', !isDark(style.map.background));
       } else {
         titleEl.innerHTML = '';
@@ -490,23 +532,16 @@
       const show = !!track && style.legend.show;
       legendEl.classList.toggle('hidden', !show);
       if (show) {
-        const rows = [];
-        if (style.cp.visible === false) {
-          rows.push([I18n.t('label.route'), style.route.color]);
-        } else if (track.closed) {
-          rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
-          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-        } else {
-          rows.push([I18n.t('cp.start'), style.cp.startColor]);
-          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-          rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
-        }
+        const legend = Style.cpLegend(track, style, I18n.t);
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;
-        legendEl.innerHTML = rows.map(([label, color]) =>
+        legendEl.dataset.pos = Style.overlayPosition(style.legend.position, 'bl');
+        legendEl.style.setProperty('--pos-x', `${Style.overlayOffset(style.legend.offsetX)}%`);
+        legendEl.style.setProperty('--pos-y', `${Style.overlayOffset(style.legend.offsetY)}%`);
+        legendEl.innerHTML = legend.rows.map(([label, color]) =>
           `<div class="ml-row"><span class="ml-dot" style="background:${color}"></span><span>${label}</span></div>`
         ).join('') +
-          `<div class="ml-foot">${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
+          `<div class="ml-foot">${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
       } else {
         legendEl.innerHTML = '';
       }

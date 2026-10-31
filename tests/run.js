@@ -219,8 +219,20 @@ test('invalid route paint falls back to solid instead of throwing', () => {
 });
 
 test('grid step grows for very large custom bounds', () => {
-  assert.strictEqual(S.gridStep({ minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 }), 500);
-  assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 500);
+  assert.strictEqual(S.gridStep({ minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 }), 750);
+  assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 750);
+});
+
+test('grid numbering starts at zero and runs top-left to bottom-right', () => {
+  const bounds = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
+  const cells = S.gridCells(bounds, S.gridStep(bounds));
+  assert.strictEqual(cells.length, 64);
+  assert.deepStrictEqual(cells[0], { x: -2625, y: 2625, index: 0 });
+  assert.deepStrictEqual(cells[7], { x: 2625, y: 2625, index: 7 });
+  assert.deepStrictEqual(cells[8], { x: -2625, y: 1875, index: 8 });
+  assert.deepStrictEqual(cells[63], { x: 2625, y: -2625, index: 63 });
+  assert.strictEqual(S.defaultVisual().map.gridNumbers, false);
+  assert.ok(S.gridNumberAlpha({ gridOpacity: 0.08 }) > 0.28);
 });
 
 test('deepMerge ignores prototype-pollution keys', () => {
@@ -249,6 +261,158 @@ test('export title content falls back to track metadata', () => {
   const content = E.titleContent(track, route, S.defaultVisual());
   assert.strictEqual(content.title, 'Export Test');
   assert.ok(content.sub.includes('2 CP'));
+});
+
+test('overlay positions accept presets and clamp fine offsets', () => {
+  assert.strictEqual(S.overlayPosition('br', 'tl'), 'br');
+  assert.strictEqual(S.overlayPosition('nope', 'tl'), 'tl');
+  assert.strictEqual(S.overlayOffset(12.5), 12.5);
+  assert.strictEqual(S.overlayOffset(200), 50);
+  assert.strictEqual(S.overlayOffset(-200), -50);
+  assert.strictEqual(S.overlayOffset('bad'), 0);
+});
+
+test('theme comparison ignores content/toggles and detects visual overrides', () => {
+  const style = S.defaultVisual();
+  assert.strictEqual(style.baseTheme, 'neon');
+  assert.ok(S.sameTheme(style, 'neon'));
+  style.title.text = 'Custom title';
+  style.title.sub = 'Custom subtitle';
+  style.title.show = false;
+  style.legend.show = false;
+  style.map.visible = false;
+  style.cp.visible = false;
+  style.cp.filter = 'start';
+  style.cp.distinguish = false;
+  style.map.source = 'custom';
+  assert.ok(S.sameTheme(style, 'neon'), 'content and visibility are not theme overrides');
+  style.title.position = 'br';
+  assert.ok(!S.sameTheme(style, 'neon'), 'placement is a visual override');
+  const tactical = S.applyTheme('tactical');
+  assert.strictEqual(tactical.baseTheme, 'tactical');
+  assert.ok(S.sameTheme(tactical, 'tactical'));
+  tactical.title.size = 1.2;
+  assert.ok(!S.sameTheme(tactical, 'tactical'), 'scale is a visual override');
+});
+
+test('checkpoint filters and uniform role styling', () => {
+  const style = S.defaultVisual();
+  const start = { role: 'start' };
+  const mid = { role: 'cp' };
+  const finish = { role: 'finish' };
+  const loop = { role: 'loop' };
+  assert.ok(S.cpVisible(start, style));
+  assert.ok(S.cpVisible(mid, style));
+  style.cp.filter = 'endpoints';
+  assert.ok(S.cpVisible(start, style));
+  assert.ok(!S.cpVisible(mid, style));
+  assert.ok(S.cpVisible(finish, style));
+  style.cp.filter = 'start';
+  assert.ok(S.cpVisible(loop, style));
+  assert.ok(!S.cpVisible(finish, style));
+  style.cp.filter = 'finish';
+  assert.ok(S.cpVisible(loop, style));
+  assert.ok(!S.cpVisible(start, style));
+  style.cp.filter = 'invalid';
+  assert.strictEqual(S.cpFilter(style), 'all');
+  style.cp.filter = 'all';
+  style.cp.distinguish = false;
+  assert.strictEqual(S.markerFill(start, style), style.cp.fill);
+  assert.strictEqual(S.markerFill(finish, style), style.cp.fill);
+  assert.strictEqual(S.markerTextColor(start, style), style.cp.textColor);
+});
+
+test('checkpoint style filter normalizes start and finish', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: [
+      { role: 'start', x: 0, y: 0 },
+      { role: 'cp', x: 1, y: 0 },
+      { role: 'finish', x: 2, y: 0 },
+    ],
+  };
+  style.cp.filter = 'checkpoints';
+  assert.ok(S.cpVisible(track.checkpoints[0], style));
+  assert.ok(S.cpVisible(track.checkpoints[2], style));
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 3);
+  assert.strictEqual(S.markerFill(track.checkpoints[0], style), style.cp.fill);
+  assert.strictEqual(S.markerFill(track.checkpoints[2], style), style.cp.fill);
+  assert.strictEqual(S.markerTextColor(track.checkpoints[0], style), style.cp.textColor);
+  assert.strictEqual(S.markerLabel(track.checkpoints[0], 0, style), '0');
+  assert.strictEqual(S.markerLabel(track.checkpoints[2], 2, style), '2');
+  const legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.rows.length, 1);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.total, 3);
+});
+
+test('checkpoint legend mirrors filters and visible count', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: [{ role: 'start' }, { role: 'cp' }, { role: 'finish' }],
+  };
+  let legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.rows.length, 3);
+  style.cp.filter = 'endpoints';
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 2);
+  assert.strictEqual(legend.rows.length, 2);
+  style.cp.filter = 'all';
+  style.cp.distinguish = false;
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.rows.length, 1);
+  style.cp.filter = 'start';
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 1);
+});
+
+test('checkpoint display density thins markers without renumbering', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: Array.from({ length: 300 }, (_, i) => ({
+      role: i === 0 ? 'start' : i === 299 ? 'finish' : 'cp',
+    })),
+  };
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 300);
+  style.cp.interval = 10;
+  const visible = S.visibleCheckpoints(track, style);
+  assert.strictEqual(visible.length, 31);
+  assert.ok(S.cpVisibleAt(track.checkpoints[0], 0, track, style));
+  assert.ok(!S.cpVisibleAt(track.checkpoints[1], 1, track, style));
+  assert.ok(S.cpVisibleAt(track.checkpoints[10], 10, track, style));
+  assert.ok(S.cpVisibleAt(track.checkpoints[299], 299, track, style));
+  const legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 31);
+  assert.strictEqual(legend.total, 300);
+  style.cp.filter = 'endpoints';
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 2);
+  style.cp.filter = 'all';
+  style.cp.interval = 20;
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 16);
+  style.cp.interval = 7;
+  assert.strictEqual(S.cpInterval(style), 1);
+});
+
+test('new theme presets and rainbow/invert modes', () => {
+  const byKey = Object.fromEntries(S.THEMES.map((theme) => [theme.key, theme]));
+  assert.strictEqual(S.THEMES.length, 9);
+  assert.ok(byKey.cyberpunk);
+  assert.strictEqual(byKey.cyberpunk.patch.route.paint, 'linear');
+  assert.strictEqual(byKey.inverted.patch.map.invert, 1);
+  assert.strictEqual(byKey.rainbow.patch.route.paint, 'rainbow');
+  const filter = S.cssFilter({ invert: 1, brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0 });
+  assert.ok(filter.includes('invert(1)'));
+  const style = S.defaultVisual();
+  style.route.paint = 'rainbow';
+  const points = Array.from({ length: 20 }, (_, i) => ({ x: i * 20, y: i % 3 }));
+  const runs = S.routeRuns(points, [0, 0], style);
+  assert.ok(runs.length > 4, 'rainbow should produce multiple runs');
+  assert.ok(new Set(runs.map((run) => run.color)).size > 4, 'rainbow colours should vary');
 });
 
 test('short wide exports scale overlay chrome down to fit', () => {
