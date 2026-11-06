@@ -25,20 +25,20 @@ const SHEET_MQ = '(max-width: 980px)';
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
-const DEFAULT_SAMPLE = 'Dirt.json';
+const DEFAULT_SAMPLE = 'FollowMe_5f.json';
 const SAMPLE_FALLBACK = [
-  { file: DEFAULT_SAMPLE, name: 'Dirt', cps: 36, length: '11.4 km' },
+  { file: DEFAULT_SAMPLE, name: 'FollowMe_5f', cps: 42, length: '16.4 km' },
+  { file: 'Dirt.json', name: 'Dirt', cps: 36, length: '11.4 km' },
   { file: '96SB2.json', name: '96SB2', cps: 15, length: '2.60 km' },
-  { file: '1314race.json', name: '1314race', cps: 19, length: '4.89 km' },
 ];
 const SPEC_EXAMPLE = `{
-  "name": "Dirt",
+  "name": "FollowMe_5f",
   "author": "your name",
   "closed": false,
   "checkpoints": [
-    { "x": 1067.495, "y": 2292.726, "z": 10.432 },
-    { "x": 727.516, "y": 2296.72, "z": 24.04 },
-    { "x": 548.414, "y": 2323.843, "z": 32.481 }
+    { "x": -43.826, "y": -223.66, "z": 5.023 },
+    { "x": -25.468, "y": -312.887, "z": 5.021 },
+    { "x": -110.109, "y": -361.545, "z": 1.023 }
   ]
 }`;
 

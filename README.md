@@ -62,7 +62,7 @@ node server.js 8173
 # or: npm start
 ```
 
-Open <http://127.0.0.1:8173/>. The first visit automatically loads the Dirt sample.
+Open <http://127.0.0.1:8173/>. The first visit opens the start card; its sample button loads the FollowMe_5f track.
 
 - `npx serve` downloads `serve` temporarily on first use; it does not write into this repo.
 - `npm run serve` is equivalent to Option A; `npm start` is equivalent to Option B.
@@ -100,13 +100,13 @@ The simplest form is an **ordered CP array**; array order is track order:
 
 ```json
 {
-  "name": "Dirt",
+  "name": "FollowMe_5f",
   "author": "your name",
   "closed": false,
   "checkpoints": [
-    { "x": 1067.495, "y": 2292.726, "z": 10.432 },
-    { "x": 727.516, "y": 2296.72, "z": 24.04 },
-    { "x": 548.414, "y": 2323.843, "z": 32.481 }
+    { "x": -43.826, "y": -223.66, "z": 5.023 },
+    { "x": -25.468, "y": -312.887, "z": 5.021 },
+    { "x": -110.109, "y": -361.545, "z": 1.023 }
   ]
 }
 ```
