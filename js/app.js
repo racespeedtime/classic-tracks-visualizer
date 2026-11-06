@@ -493,7 +493,7 @@ function saveSession() {
       track: state.track ? Track.toJSON(state.track) : null,
       sampleFile: state.track && state.track.sampleFile ? state.track.sampleFile : null,
       autoName: !!(state.track && state.track.autoName),
-      empty: !state.track || !state.track.checkpoints.length,
+      empty: !state.track,
       cpLocked: state.cpLocked,
       playbackFollow: state.playback.follow,
       playbackHeading: state.playback.heading,
@@ -511,8 +511,10 @@ function flushPendingSession() {
   if (state.suppressSave) return;
   if (state.track) {
     const name = $('track-name').value.trim();
-    state.track.autoName = !name;
-    state.track.name = name || t("cp.untitled");
+    // Leaving the default placeholder in the field still means "auto name", so
+    // a blank track keeps following the interface language.
+    state.track.autoName = !name || name === t("cp.untitled");
+    state.track.name = state.track.autoName ? t("cp.untitled") : name;
     state.track.author = $('track-author').value.trim();
   }
   clearTimeout(state.saveTimer);
@@ -523,8 +525,21 @@ function flushPendingSession() {
 function loadSessionTrack(saved) {
   if (!saved || !saved.track) return null;
   try {
-    const track = Track.parseTrack(JSON.stringify(saved.track), '上次会话.json');
-    if (!track.checkpoints.length) return null;
+    const raw = saved.track;
+    const checkpoints = Array.isArray(raw.checkpoints) ? raw.checkpoints : [];
+    if (!checkpoints.length) {
+      // The user created a blank track before reloading: restore that editor
+      // instead of dropping them back on the import screen.
+      const track = blankTrack();
+      const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+      track.autoName = saved.autoName === true || !name || name === t("cp.untitled");
+      if (!track.autoName) track.name = name;
+      if (typeof raw.author === 'string') track.author = raw.author;
+      track.closed = !!raw.closed;
+      if (saved.sampleFile) track.sampleFile = saved.sampleFile;
+      return track;
+    }
+    const track = Track.parseTrack(JSON.stringify(raw), '上次会话.json');
     if (saved.sampleFile) track.sampleFile = saved.sampleFile;
     track.autoName = saved.autoName === true;
     return track;
@@ -571,6 +586,22 @@ function recomputeRoute(opts = {}) {
     renderCpList();
     renderWarnings();
     syncPlaybackUI();
+    setStatus('ready', 'status.ready');
+    return;
+  }
+  if (!state.track.checkpoints.length) {
+    // Blank track: there is nothing to route yet, but keep the editor fully
+    // usable so the first checkpoint can be placed on the map.
+    state.route = null;
+    state.selected = -1;
+    MapView.setData({ track: state.track, route: null, style: state.style, selected: -1 });
+    renderTrackSummary();
+    renderRouteStats();
+    renderCpList();
+    renderWarnings();
+    syncPlaybackUI();
+    updateCpDensityHint();
+    updateArrowAutoHint();
     setStatus('ready', 'status.ready');
     return;
   }
@@ -1513,8 +1544,18 @@ function renderCpList(opts = {}) {
   const list = $('cp-list');
   if (!list) return;
   state.cpWindow = null;
-  if (!state.track || !state.track.checkpoints.length) {
-    list.innerHTML = `<div class="cp-empty">${escapeHtml(t("cp.empty"))}</div>`;
+  if (!state.track) {
+    list.innerHTML = `<div class="cp-empty">${escapeHtml(t("cp.emptyNoTrack"))}</div>`;
+    return;
+  }
+  if (!state.track.checkpoints.length) {
+    list.innerHTML = `<div class="cp-empty">
+      <p>${escapeHtml(t("cp.empty"))}</p>
+      <button class="btn small" type="button" data-action="add-cp">
+        <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+        ${escapeHtml(t("action.addOnMap"))}
+      </button>
+    </div>`;
     return;
   }
   if (state.cpListCollapsed) {
@@ -1684,6 +1725,16 @@ function pushUndoSnapshot() {
   syncHistoryButtons();
 }
 
+// Leave the editor and go back to the start screen. The undo stack keeps a
+// snapshot, so Ctrl/Cmd+Z reopens the track that was just closed.
+function closeTrack() {
+  if (!state.track) return;
+  if (state.track.checkpoints.length && !confirm(t("cp.closeConfirm"))) return;
+  pushUndoSnapshot();
+  restoreEmptyTrackState();
+  toast(t("cp.closed"));
+}
+
 function restoreEmptyTrackState() {
   clearTimeout(state.routeTimer);
   state.trackLoadSeq++;
@@ -1708,11 +1759,23 @@ function restoreEmptyTrackState() {
 }
 
 function restoreTrackSnapshot(snapshot) {
-  if (!snapshot || !snapshot.track || !snapshot.track.checkpoints || !snapshot.track.checkpoints.length) {
+  if (!snapshot || !snapshot.track) {
     restoreEmptyTrackState();
     return;
   }
   clearTimeout(state.routeTimer);
+  const checkpoints = Array.isArray(snapshot.track.checkpoints) ? snapshot.track.checkpoints : [];
+  if (!checkpoints.length) {
+    // Undoing back to a freshly created track restores the blank editor again.
+    const track = blankTrack();
+    const name = typeof snapshot.track.name === 'string' ? snapshot.track.name.trim() : '';
+    track.autoName = snapshot.autoName === true || !name || name === t("cp.untitled");
+    if (!track.autoName) track.name = name;
+    if (typeof snapshot.track.author === 'string') track.author = snapshot.track.author;
+    track.closed = !!snapshot.track.closed;
+    applyTrack(track, { fit: false, preserveHistory: true });
+    return;
+  }
   const track = Track.parseTrack(JSON.stringify(snapshot.track), snapshot.sampleFile || 'history.json');
   if (snapshot.sampleFile) track.sampleFile = snapshot.sampleFile;
   track.autoName = snapshot.autoName === true;
@@ -1803,9 +1866,8 @@ function deleteCp(index) {
   saveSessionSoon();
 }
 
-function ensureTrack() {
-  if (state.track) return state.track;
-  const track = {
+function blankTrack() {
+  return {
     format: Track.FORMAT,
     name: t("cp.untitled"),
     author: '',
@@ -1817,6 +1879,11 @@ function ensureTrack() {
     sourceName: '',
     autoName: true,
   };
+}
+
+function ensureTrack() {
+  if (state.track) return state.track;
+  const track = blankTrack();
   state.track = track;
   state.routing.closed = false;
   $('empty-state').classList.add('hidden');
@@ -1876,31 +1943,14 @@ function toggleAddMode() {
 }
 
 function newTrack() {
-  if (state.track && !confirm(t("cp.newConfirm"))) return;
-  state.trackLoadSeq++;
-  clearHistory();
-  resetPlayback();
-  state.track = null;
-  state.route = null;
-  state.selected = -1;
-  state.routing.closed = false;
-  state.addMode = false;
-  setAddMode(false);
-  $('track-name').value = '';
-  $('track-author').value = '';
-  $('closed-toggle').checked = false;
-  $('empty-state').classList.remove('hidden');
-  updateDocumentTitle();
+  // Only ask for confirmation when there is something to lose; a blank track is
+  // already empty.
+  if (state.track && state.track.checkpoints.length && !confirm(t("cp.newConfirm"))) return;
+  // Start a real, editable blank track instead of going back to the import
+  // screen: the user asked for a new track, not for the file dialog.
+  applyTrack(blankTrack(), { fit: true, toast: t("cp.newBlank") });
   const cpList = $('cp-list');
   if (cpList) cpList.scrollTop = 0;
-  MapView.setData({ track: null, route: null, style: state.style, selected: -1 });
-  MapView.fitBase();
-  syncAll();
-  renderCpList();
-  renderWarnings();
-  setStatus('ready', 'status.ready');
-  saveSessionSoon();
-  toast(t("cp.newBlank"));
 }
 
 async function clearLocalCache() {
@@ -2103,7 +2153,7 @@ function renderWarnings() {
     el.innerHTML = `<div class="warn-empty">${escapeHtml(text)}</div>`;
   };
 
-  if (!state.track) {
+  if (!state.track || !state.track.checkpoints.length) {
     if (state.warnListCollapsed) {
       trackEl.classList.add('hidden');
       trackEl.classList.remove('virtual');
@@ -3135,7 +3185,11 @@ function renderSampleChips() {
 }
 
 function saveTrackJSON() {
-  if (!state.track) return toast(t("status.noTrack"), 'error');
+  // A blank track would export an empty checkpoint array that the parser
+  // rejects on import, so ask for at least one checkpoint first.
+  if (!state.track || !state.track.checkpoints.length) {
+    return toast(t("error.loadTrackFirst"), 'error');
+  }
   const data = Track.toJSON(state.track);
   const text = JSON.stringify(data, null, 2);
   downloadText(`${safeFileName(state.track.name)}.json`, text, 'application/json');
@@ -3875,8 +3929,8 @@ function bindUi() {
   const onMeta = () => {
     if (!state.track) return;
     const name = $('track-name').value.trim();
-    state.track.autoName = !name;
-    state.track.name = name || t("cp.untitled");
+    state.track.autoName = !name || name === t("cp.untitled");
+    state.track.name = state.track.autoName ? t("cp.untitled") : name;
     state.track.author = $('track-author').value.trim();
     updateDocumentTitle();
     MapView.refreshOverlays();
@@ -4252,6 +4306,7 @@ function runAction(action) {
     case 'open-json': openFilePicker(); break;
     case 'save-json': saveTrackJSON(); break;
     case 'new-track': newTrack(); break;
+    case 'close-track': closeTrack(); break;
     case 'clear-cache': clearLocalCache(); break;
     case 'help': {
       openDialog($('help-dialog'));
@@ -4641,16 +4696,15 @@ async function boot() {
   const savedTrack = loadSessionTrack(saved);
   if (savedTrack) {
     applyTrack(savedTrack, { fit: true, silent: true });
-  } else if (saved && saved.empty) {
-    // The user explicitly created a blank track last time; keep it blank.
+  } else {
+    // No track yet: the start card is the landing screen for this state (first
+    // visit, or an older session that stored no track), not a modal over an
+    // editable track — so it never appears once a track exists.
     $('empty-state').classList.remove('hidden');
     syncAll();
     renderCpList();
     renderWarnings();
     MapView.fitBase();
-  } else {
-    // First visit: show the featured classic sample instead of an empty map.
-    loadSample(DEFAULT_SAMPLE, { silent: true });
   }
   setStatus('ready', 'status.ready');
 }
